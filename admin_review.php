@@ -698,6 +698,40 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                                         <span class="info-label">审核员:</span>
                                         <span class="text-gray-800"><?php echo htmlspecialchars($current_photo['reviewer_username'] ?? '未分配'); ?></span>
                                     </div>
+                                    <li  class="flex">
+                                        <span class="info-label">相机</span>
+                                        <span class="text-gray-800"><?php echo !empty($current_photo['Cam']) ? htmlspecialchars($current_photo['Cam']) : '未填写'; ?></span>
+                                    </li>
+                                    <li class="flex">
+                                        <span class="info-label">镜头</span>
+                                        <span class="text-gray-800"><?php echo !empty($current_photo['Lens']) ? htmlspecialchars($current_photo['Lens']) : '未填写'; ?></span>
+                                    </li>
+                                    <li class="flex">
+                                        <span class="info-label">焦距</span>
+                                        <span class="text-gray-800"><?php echo htmlspecialchars($current_photo['FocalLength']); ?> mm</span>
+                                    </li>
+                                    <li class="flex">
+                                        <span class="info-label">ISO</span>
+                                        <span class="text-gray-800"><?php echo htmlspecialchars($current_photo['ISO']); ?></span>
+                                    </li>
+                                    <li class="flex">
+                                        <span class="info-label">光圈</span>
+                                        <span class="text-gray-800">f/<?php echo htmlspecialchars($current_photo['F']); ?></span>
+                                    </li>
+                                    <li class="flex">
+                                        <span class="info-label">快门</span>
+                                        <span class="text-gray-800"><?php echo htmlspecialchars($current_photo['Shutter']); ?></span>
+                                    </li>
+
+
+
+
+
+
+
+
+
+
                                 </div>
 
                                 <!-- 图片描述 -->

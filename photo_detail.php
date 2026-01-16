@@ -1135,14 +1135,48 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                             <span class="info-label"><i class="fas fa-clock"></i> 拍摄时间</span>
                             <span class="info-value"><?php echo htmlspecialchars($photo['拍摄时间']); ?></span>
                         </li>
+
                         <li>
-                            <span class="info-label"><i class="fas fa-map-marker-alt"></i> 拍摄地点</span>
-                            <span class="info-value"><?php echo htmlspecialchars($photo['拍摄地点']); ?></span>
+                            <span class="info-label"><i class="fas fa-camera"></i> 相机</span>
+                            <span class="info-value"><?php echo !empty($photo['Cam']) ? htmlspecialchars($photo['Cam']) : '未填写'; ?></span>
+                        </li>
+                                                <li>
+                            <span class="info-label"><i class="fas fa-camera"></i> 镜头</span>
+                            <span class="info-value"><?php echo !empty($photo['Lens']) ? htmlspecialchars($photo['Lens']) : '未填写'; ?></span>
                         </li>
                         <li>
-                            <span class="info-label"><i class="fas fa-camera"></i> 拍摄设备</span>
-                            <span class="info-value"><?php echo !empty($photo['camera_model']) ? htmlspecialchars($photo['camera_model']) : '未填写'; ?></span>
+                            <span class="info-label"><i class="fas fa-camera"></i> 焦距</span>
+                            <span class="info-value"><?php echo htmlspecialchars($photo['FocalLength']); ?> mm</span>
                         </li>
+                        <li>
+                            <span class="info-label"><i class="fas fa-camera"></i> ISO</span>
+                            <span class="info-value"><?php echo htmlspecialchars($photo['ISO']); ?></span>
+                        </li>
+                                                <li>
+                            <span class="info-label"><i class="fas fa-camera"></i> 光圈</span>
+                            <span class="info-value">f/<?php echo htmlspecialchars($photo['F']); ?></span>
+                        </li>
+                                                <li>
+                            <span class="info-label"><i class="fas fa-camera"></i> 快门</span>
+                            <span class="info-value"><?php echo htmlspecialchars($photo['Shutter']); ?></span>
+                        </li>
+                                       
+
+
+
+                        <li>
+                            <span class="info-label">
+                                <i class="fas fa-hashtag"></i> 拍摄地点在FR24上的页面
+                            </span>
+                            <span class="info-value">
+                                <a href="https://www.flightradar24.com/data/airports/<?php echo urlencode($photo['拍摄地点']); ?>"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    <?php echo htmlspecialchars($photo['拍摄地点']); ?>
+                                </a>
+                            </span>
+                        </li>
+
                         <li>
                             <span class="info-label">
                                 <i class="fas fa-hashtag"></i> FR24上最近的航班
