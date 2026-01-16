@@ -8,12 +8,12 @@ $announcements = [];
 try {
     $stmt = $pdo->query("SELECT * FROM announcements WHERE is_active = 1 ORDER BY created_at DESC LIMIT 3");
     $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch(PDOException $e) {
+} catch (PDOException $e) {
     // 公告查询失败不影响页面主体功能
 }
 
 // 如果用户已登录，更新活动时间
-if(isset($_SESSION['user_id'])) {
+if (isset($_SESSION['user_id'])) {
     updateUserActivity($_SESSION['user_id']);
 }
 
@@ -31,7 +31,7 @@ try {
                           LIMIT 5"); // 最多5张精选图片用于轮播
     $stmt->execute();
     $featured_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch(PDOException $e) {
+} catch (PDOException $e) {
     $error = "获取精选图片失败: " . $e->getMessage();
     $featured_photos = [];
 }
@@ -43,7 +43,7 @@ $search_keyword = '';
 $search_error = '';
 
 // 处理搜索请求（支持标题、作者、机型、拍摄地点搜索）
-if(isset($_GET['search']) && !empty(trim($_GET['search']))) {
+if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
     $search_keyword = trim($_GET['search']);
     try {
         $search_stmt = $pdo->prepare("SELECT p.*, u.username 
@@ -63,12 +63,12 @@ if(isset($_GET['search']) && !empty(trim($_GET['search']))) {
         $search_stmt->bindValue(':limit', $total_display, PDO::PARAM_INT);
         $search_stmt->execute();
         $display_photos = $search_stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // 搜索无结果提示
-        if(empty($display_photos)) {
+        if (empty($display_photos)) {
             $search_error = "未找到包含「{$search_keyword}」的图片，建议尝试其他关键词";
         }
-    } catch(PDOException $e) {
+    } catch (PDOException $e) {
         $error = "搜索图片失败: " . $e->getMessage();
         $display_photos = [];
     }
@@ -84,7 +84,7 @@ if(isset($_GET['search']) && !empty(trim($_GET['search']))) {
         $stmt->bindValue(':limit', $total_display, PDO::PARAM_INT);
         $stmt->execute();
         $display_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch(PDOException $e) {
+    } catch (PDOException $e) {
         $error = "获取图片失败: " . $e->getMessage();
         $display_photos = [];
     }
@@ -96,6 +96,7 @@ $online_admin_names = getOnlineAdminNames();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -118,35 +119,35 @@ $online_admin_names = getOnlineAdminNames();
             --border-radius: 8px;
             --transition: all 0.3s ease;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
-        body { 
-            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
-            background-color: var(--light-bg); 
+
+        body {
+            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--light-bg);
             color: var(--text-dark);
             line-height: 1.6;
             overflow-x: hidden;
         }
-        
+
         /* 滚动行为平滑 */
         html {
             scroll-behavior: smooth;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 20px;
         }
-        
+
         /* 导航栏样式 */
-        .nav { 
-            background-color: var(--primary); 
+        .nav {
+            background-color: var(--primary);
             padding: 15px 0;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             position: sticky;
@@ -154,19 +155,19 @@ $online_admin_names = getOnlineAdminNames();
             z-index: 100;
             transition: var(--transition);
         }
-        
+
         .nav.scrolled {
             padding: 10px 0;
             background-color: rgba(22, 93, 255, 0.95);
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
         }
-        
+
         .nav-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .logo {
             color: white;
             font-size: 1.5rem;
@@ -177,31 +178,31 @@ $online_admin_names = getOnlineAdminNames();
             gap: 8px;
             transition: var(--transition);
         }
-        
+
         .logo img {
             height: 40px;
             width: auto;
             border-radius: 4px;
         }
-        
+
         .logo:hover {
             transform: scale(1.05);
         }
-        
+
         .logo-text {
             font-size: 1.5rem;
             font-weight: bold;
         }
-        
+
         /* 导航链接 */
         .nav-links {
             display: flex;
             gap: 20px;
         }
-        
-        .nav a { 
-            color: white; 
-            text-decoration: none; 
+
+        .nav a {
+            color: white;
+            text-decoration: none;
             padding: 6px 10px;
             border-radius: 4px;
             transition: var(--transition);
@@ -211,12 +212,12 @@ $online_admin_names = getOnlineAdminNames();
             align-items: center;
             gap: 6px;
         }
-        
+
         .nav a:hover {
             background-color: var(--primary-dark);
             transform: translateY(-2px);
         }
-        
+
         .nav a::after {
             content: '';
             position: absolute;
@@ -227,11 +228,11 @@ $online_admin_names = getOnlineAdminNames();
             background-color: white;
             transition: var(--transition);
         }
-        
+
         .nav a:hover::after {
             width: 100%;
         }
-        
+
         /* 移动端菜单 */
         .mobile-menu-btn {
             display: none;
@@ -242,7 +243,7 @@ $online_admin_names = getOnlineAdminNames();
             cursor: pointer;
             z-index: 110;
         }
-        
+
         .mobile-menu-btn span {
             position: absolute;
             width: 30px;
@@ -251,15 +252,31 @@ $online_admin_names = getOnlineAdminNames();
             border-radius: 3px;
             transition: all 0.3s ease;
         }
-        
-        .mobile-menu-btn span:nth-child(1) { top: 5px; }
-        .mobile-menu-btn span:nth-child(2) { top: 14px; }
-        .mobile-menu-btn span:nth-child(3) { bottom: 5px; }
-        
-        .mobile-menu-btn.active span:nth-child(1) { transform: rotate(45deg) translate(8px, 8px); }
-        .mobile-menu-btn.active span:nth-child(2) { opacity: 0; }
-        .mobile-menu-btn.active span:nth-child(3) { transform: rotate(-45deg) translate(8px, -8px); }
-        
+
+        .mobile-menu-btn span:nth-child(1) {
+            top: 5px;
+        }
+
+        .mobile-menu-btn span:nth-child(2) {
+            top: 14px;
+        }
+
+        .mobile-menu-btn span:nth-child(3) {
+            bottom: 5px;
+        }
+
+        .mobile-menu-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(8px, 8px);
+        }
+
+        .mobile-menu-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .mobile-menu-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(8px, -8px);
+        }
+
         /* 公告弹窗 */
         .announcement-modal {
             position: fixed;
@@ -277,12 +294,12 @@ $online_admin_names = getOnlineAdminNames();
             transition: all 0.3s ease;
             padding: 20px;
         }
-        
+
         .announcement-modal.active {
             opacity: 1;
             visibility: visible;
         }
-        
+
         .announcement-content {
             background-color: white;
             border-radius: var(--border-radius);
@@ -296,11 +313,11 @@ $online_admin_names = getOnlineAdminNames();
             transform: translateY(20px);
             transition: transform 0.3s ease;
         }
-        
+
         .announcement-modal.active .announcement-content {
             transform: translateY(0);
         }
-        
+
         .announcement-close {
             position: absolute;
             top: 15px;
@@ -312,17 +329,17 @@ $online_admin_names = getOnlineAdminNames();
             color: var(--text-light);
             transition: var(--transition);
         }
-        
+
         .announcement-close:hover {
             color: #dc3545;
         }
-        
+
         .announcement-header {
             margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 1px solid var(--medium-gray);
         }
-        
+
         .announcement-title {
             font-size: 1.5rem;
             color: var(--primary-dark);
@@ -330,41 +347,41 @@ $online_admin_names = getOnlineAdminNames();
             align-items: center;
             gap: 10px;
         }
-        
+
         .announcement-title i {
             color: var(--accent);
         }
-        
+
         .announcement-date {
             color: var(--text-light);
             font-size: 0.9rem;
             margin-top: 5px;
         }
-        
+
         .announcement-text {
             margin-bottom: 20px;
             line-height: 1.8;
         }
-        
+
         .announcement-slider {
             display: flex;
             overflow: hidden;
             border-radius: var(--border-radius);
             margin-bottom: 20px;
         }
-        
+
         .announcement-slide {
             min-width: 100%;
             transition: transform 0.5s ease;
         }
-        
+
         .announcement-pagination {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin: 20px 0;
         }
-        
+
         .announcement-dot {
             width: 10px;
             height: 10px;
@@ -373,11 +390,11 @@ $online_admin_names = getOnlineAdminNames();
             cursor: pointer;
             transition: var(--transition);
         }
-        
+
         .announcement-dot.active {
             background-color: var(--primary);
         }
-        
+
         .announcement-actions {
             display: flex;
             justify-content: space-between;
@@ -385,7 +402,7 @@ $online_admin_names = getOnlineAdminNames();
             padding-top: 15px;
             border-top: 1px solid var(--medium-gray);
         }
-        
+
         .announcement-btn {
             padding: 8px 16px;
             border-radius: var(--border-radius);
@@ -394,16 +411,16 @@ $online_admin_names = getOnlineAdminNames();
             transition: var(--transition);
             font-weight: 500;
         }
-        
+
         .announcement-btn-primary {
             background-color: var(--primary);
             color: white;
         }
-        
+
         .announcement-btn-primary:hover {
             background-color: var(--primary-dark);
         }
-        
+
         /* Hero区域（轮播图） */
         .hero {
             position: relative;
@@ -414,13 +431,13 @@ $online_admin_names = getOnlineAdminNames();
             border-radius: 0 0 50% 50% / 20px;
             overflow: hidden;
         }
-        
+
         /* 轮播图容器 */
         .featured-carousel {
             position: relative;
             z-index: 5;
         }
-        
+
         .carousel-wrapper {
             display: flex;
             transition: transform 0.5s ease-in-out;
@@ -428,13 +445,13 @@ $online_admin_names = getOnlineAdminNames();
             height: 60vh;
             min-height: 400px;
         }
-        
+
         .carousel-slide {
             min-width: 100%;
             position: relative;
             height: 100%;
         }
-        
+
         .carousel-slide img {
             width: 100%;
             height: 100%;
@@ -442,7 +459,7 @@ $online_admin_names = getOnlineAdminNames();
             object-fit: contain;
             background-color: #000;
         }
-        
+
         .carousel-caption {
             position: absolute;
             bottom: 0;
@@ -455,30 +472,30 @@ $online_admin_names = getOnlineAdminNames();
             opacity: 0;
             transition: all 0.5s ease;
         }
-        
+
         .carousel-slide:hover .carousel-caption {
             transform: translateY(0);
             opacity: 1;
         }
-        
+
         .carousel-title {
             font-size: 1.5rem;
             margin-bottom: 10px;
         }
-        
+
         .carousel-meta {
             display: flex;
             gap: 20px;
             font-size: 0.9rem;
             opacity: 0.9;
         }
-        
+
         .carousel-meta span {
             display: flex;
             align-items: center;
             gap: 5px;
         }
-        
+
         .carousel-control {
             position: absolute;
             top: 50%;
@@ -497,15 +514,20 @@ $online_admin_names = getOnlineAdminNames();
             justify-content: center;
             z-index: 10;
         }
-        
-        .carousel-control.prev { left: 20px; }
-        .carousel-control.next { right: 20px; }
-        
+
+        .carousel-control.prev {
+            left: 20px;
+        }
+
+        .carousel-control.next {
+            right: 20px;
+        }
+
         .carousel-control:hover {
             background-color: var(--primary);
             transform: translateY(-50%) scale(1.1);
         }
-        
+
         .carousel-indicators {
             position: absolute;
             bottom: 20px;
@@ -516,7 +538,7 @@ $online_admin_names = getOnlineAdminNames();
             gap: 10px;
             z-index: 10;
         }
-        
+
         .carousel-dot {
             width: 12px;
             height: 12px;
@@ -525,13 +547,13 @@ $online_admin_names = getOnlineAdminNames();
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
+
         .carousel-dot.active {
             background-color: white;
             transform: scale(1.3);
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
         }
-        
+
         /* 精选标签 */
         .featured-badge {
             position: absolute;
@@ -546,11 +568,11 @@ $online_admin_names = getOnlineAdminNames();
             z-index: 10;
             transition: var(--transition);
         }
-        
+
         .carousel-slide:hover .featured-badge {
             transform: scale(1.1) rotate(3deg);
         }
-        
+
         /* 搜索框上方标题 */
         .search-header {
             text-align: center;
@@ -559,9 +581,9 @@ $online_admin_names = getOnlineAdminNames();
             font-size: clamp(1.2rem, 3vw, 1.8rem);
             font-weight: bold;
             letter-spacing: 0.5px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
-        
+
         /* 搜索框样式 */
         .search-container {
             background-color: white;
@@ -574,17 +596,17 @@ $online_admin_names = getOnlineAdminNames();
             z-index: 20;
             transition: var(--transition);
         }
-        
+
         .search-container:hover {
             box-shadow: var(--hover-shadow);
         }
-        
+
         .search-form {
             display: flex;
             gap: 10px;
             align-items: center;
         }
-        
+
         .search-input {
             flex: 1;
             padding: 14px 20px;
@@ -594,12 +616,12 @@ $online_admin_names = getOnlineAdminNames();
             transition: var(--transition);
             outline: none;
         }
-        
+
         .search-input:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
         }
-        
+
         .search-btn {
             background-color: var(--primary);
             color: white;
@@ -614,19 +636,19 @@ $online_admin_names = getOnlineAdminNames();
             align-items: center;
             gap: 8px;
         }
-        
+
         .search-btn:hover {
             background-color: var(--primary-dark);
             transform: translateY(-2px);
         }
-        
+
         .search-hint {
             color: var(--text-light);
             font-size: 0.85rem;
             margin-top: 10px;
             text-align: center;
         }
-        
+
         /* 统计信息区域 */
         .stats-container {
             display: grid;
@@ -634,7 +656,7 @@ $online_admin_names = getOnlineAdminNames();
             gap: 25px;
             margin-bottom: 60px;
         }
-        
+
         .stat-card {
             background-color: white;
             padding: 30px;
@@ -645,7 +667,7 @@ $online_admin_names = getOnlineAdminNames();
             position: relative;
             overflow: hidden;
         }
-        
+
         .stat-card::before {
             content: '';
             position: absolute;
@@ -655,24 +677,24 @@ $online_admin_names = getOnlineAdminNames();
             height: 4px;
             background: linear-gradient(90deg, var(--primary), var(--accent));
         }
-        
+
         .stat-card:hover {
             transform: translateY(-8px);
             box-shadow: var(--hover-shadow);
         }
-        
+
         .stat-icon {
             font-size: 2.8rem;
             color: var(--primary);
             margin-bottom: 20px;
             transition: var(--transition);
         }
-        
+
         .stat-card:hover .stat-icon {
             transform: scale(1.1) rotate(5deg);
             color: var(--accent);
         }
-        
+
         .stat-value {
             font-size: clamp(1.8rem, 4vw, 2.2rem);
             font-weight: bold;
@@ -681,13 +703,13 @@ $online_admin_names = getOnlineAdminNames();
             position: relative;
             display: inline-block;
         }
-        
+
         .stat-label {
             color: var(--text-medium);
             font-size: 1rem;
             font-weight: 500;
         }
-        
+
         /* 在线状态标识 */
         .online-indicator {
             display: inline-block;
@@ -698,7 +720,7 @@ $online_admin_names = getOnlineAdminNames();
             margin-right: 5px;
             animation: pulse 2s infinite;
         }
-        
+
         .admin-names {
             margin-top: 10px;
             color: var(--text-medium);
@@ -709,17 +731,28 @@ $online_admin_names = getOnlineAdminNames();
             text-overflow: ellipsis;
             transition: var(--transition);
         }
-        
+
         .stat-card:hover .admin-names {
             color: var(--primary);
         }
-        
+
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 180, 42, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 180, 42, 0); }
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 180, 42, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(0, 180, 42, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 180, 42, 0);
+            }
         }
-        
+
         /* 图片区域标题 */
         .section-title {
             font-size: clamp(1.5rem, 3vw, 2rem);
@@ -729,7 +762,7 @@ $online_admin_names = getOnlineAdminNames();
             padding-bottom: 12px;
             display: inline-block;
         }
-        
+
         .section-title::after {
             content: '';
             position: absolute;
@@ -740,17 +773,17 @@ $online_admin_names = getOnlineAdminNames();
             background-color: var(--primary);
             border-radius: 2px;
         }
-        
+
         /* 图片网格 */
-        .photo-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-            gap: 30px; 
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
             margin-bottom: 60px;
         }
-        
-        .photo-item { 
-            background-color: white; 
+
+        .photo-item {
+            background-color: white;
             border-radius: var(--border-radius);
             overflow: hidden;
             box-shadow: var(--card-shadow);
@@ -760,12 +793,12 @@ $online_admin_names = getOnlineAdminNames();
             display: flex;
             flex-direction: column;
         }
-        
+
         .photo-item:hover {
             transform: translateY(-10px);
             box-shadow: var(--hover-shadow);
         }
-        
+
         .photo-category {
             position: absolute;
             top: 15px;
@@ -779,30 +812,30 @@ $online_admin_names = getOnlineAdminNames();
             z-index: 10;
             transition: var(--transition);
         }
-        
+
         .photo-item:hover .photo-category {
             background-color: var(--accent);
             transform: scale(1.1);
         }
-        
+
         .photo-img-container {
             height: 220px;
             overflow: hidden;
             position: relative;
         }
-        
-        .photo-item img { 
-            width: 100%; 
-            height: 100%; 
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             transition: transform 0.5s ease, filter 0.5s ease;
         }
-        
+
         .photo-item:hover img {
             transform: scale(1.1);
             filter: brightness(1.05);
         }
-        
+
         .photo-img-container::after {
             content: '';
             position: absolute;
@@ -810,22 +843,22 @@ $online_admin_names = getOnlineAdminNames();
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(transparent 60%, rgba(0,0,0,0.1) 100%);
+            background: linear-gradient(transparent 60%, rgba(0, 0, 0, 0.1) 100%);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
-        
+
         .photo-item:hover .photo-img-container::after {
             opacity: 1;
         }
-        
+
         .photo-info {
             padding: 20px;
             flex-grow: 1;
             display: flex;
             flex-direction: column;
         }
-        
+
         .photo-title {
             font-size: 1.2rem;
             margin-bottom: 10px;
@@ -837,11 +870,11 @@ $online_admin_names = getOnlineAdminNames();
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        
+
         .photo-item:hover .photo-title {
             color: var(--primary);
         }
-        
+
         .photo-meta {
             display: flex;
             flex-direction: column;
@@ -850,26 +883,26 @@ $online_admin_names = getOnlineAdminNames();
             color: var(--text-medium);
             margin-top: auto;
         }
-        
+
         .photo-meta span {
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        
+
         .photo-meta i {
             color: var(--primary-light);
             width: 16px;
             text-align: center;
         }
-        
+
         /* 按钮通用样式 */
-        .btn { 
-            background-color: var(--primary); 
-            color: white; 
-            border: none; 
-            padding: 10px 20px; 
-            cursor: pointer; 
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
             border-radius: 50px;
             transition: var(--transition);
             font-weight: 500;
@@ -882,18 +915,18 @@ $online_admin_names = getOnlineAdminNames();
             min-width: 44px;
             justify-content: center;
         }
-        
+
         .btn:hover {
             background-color: var(--primary-dark);
             transform: translateY(-3px);
             box-shadow: 0 4px 12px rgba(22, 93, 255, 0.4);
         }
-        
+
         .view-more {
             text-align: center;
             margin: 50px 0 80px;
         }
-        
+
         /* 错误提示 */
         .error-message {
             color: #dc3545;
@@ -905,7 +938,7 @@ $online_admin_names = getOnlineAdminNames();
             text-align: center;
             grid-column: 1 / -1;
         }
-        
+
         .search-empty {
             color: var(--text-medium);
             background-color: var(--light-gray);
@@ -914,13 +947,13 @@ $online_admin_names = getOnlineAdminNames();
             text-align: center;
             grid-column: 1 / -1;
         }
-        
+
         .search-empty i {
             font-size: 3rem;
             margin-bottom: 15px;
             color: var(--text-light);
         }
-        
+
         /* 手机端快速上传按钮 */
         .mobile-upload-btn {
             position: fixed;
@@ -940,15 +973,16 @@ $online_admin_names = getOnlineAdminNames();
             transition: all 0.3s ease;
             z-index: 90;
             text-decoration: none;
-            display: none; /* 默认隐藏 */
+            display: none;
+            /* 默认隐藏 */
         }
-        
+
         .mobile-upload-btn:hover {
             transform: scale(1.1) rotate(10deg);
             background-color: #e67200;
             box-shadow: 0 6px 20px rgba(255, 125, 0, 0.5);
         }
-        
+
         /* 页脚样式 */
         footer {
             background-color: var(--primary-dark);
@@ -956,14 +990,14 @@ $online_admin_names = getOnlineAdminNames();
             padding: 60px 0 30px;
             margin-top: 50px;
         }
-        
+
         .footer-content {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 40px;
             margin-bottom: 40px;
         }
-        
+
         .footer-logo {
             font-size: 1.8rem;
             font-weight: bold;
@@ -972,26 +1006,26 @@ $online_admin_names = getOnlineAdminNames();
             align-items: center;
             gap: 10px;
         }
-        
+
         .footer-logo img {
             height: 40px;
             width: auto;
             border-radius: 4px;
         }
-        
+
         .footer-desc {
             color: rgba(255, 255, 255, 0.8);
             margin-bottom: 20px;
             line-height: 1.7;
         }
-        
+
         .footer-title {
             font-size: 1.2rem;
             margin-bottom: 20px;
             position: relative;
             padding-bottom: 10px;
         }
-        
+
         .footer-title::after {
             content: '';
             position: absolute;
@@ -1002,32 +1036,32 @@ $online_admin_names = getOnlineAdminNames();
             background-color: var(--accent);
             border-radius: 2px;
         }
-        
+
         .footer-links {
             list-style: none;
         }
-        
+
         .footer-links li {
             margin-bottom: 12px;
         }
-        
+
         .footer-links a {
             color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             transition: var(--transition);
         }
-        
+
         .footer-links a:hover {
             color: white;
             padding-left: 5px;
         }
-        
+
         .social-links {
             display: flex;
             gap: 15px;
             margin-top: 20px;
         }
-        
+
         .social-links a {
             display: inline-flex;
             align-items: center;
@@ -1039,12 +1073,12 @@ $online_admin_names = getOnlineAdminNames();
             color: white;
             transition: var(--transition);
         }
-        
+
         .social-links a:hover {
             background-color: var(--accent);
             transform: translateY(-3px) rotate(10deg);
         }
-        
+
         .copyright {
             text-align: center;
             padding-top: 30px;
@@ -1052,7 +1086,7 @@ $online_admin_names = getOnlineAdminNames();
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.9rem;
         }
-        
+
         /* 返回顶部按钮 */
         .back-to-top {
             position: fixed;
@@ -1075,34 +1109,48 @@ $online_admin_names = getOnlineAdminNames();
             z-index: 99;
             transform: translateY(20px);
         }
-        
+
         .back-to-top.show {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
         }
-        
+
         /* 动画效果 */
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        
+
         .fade-in {
             opacity: 0;
             transform: translateY(30px);
             transition: opacity 0.6s ease, transform 0.6s ease;
         }
-        
+
         .fade-in.visible {
             opacity: 1;
             transform: translateY(0);
         }
-        
+
         /* 响应式适配 - 重点优化轮播图显示 */
         @media (max-width: 768px) {
+
             /* 导航 */
-            .mobile-menu-btn { display: block; position: relative; width: 30px; height: 30px; }
+            .mobile-menu-btn {
+                display: block;
+                position: relative;
+                width: 30px;
+                height: 30px;
+            }
+
             .nav-links {
                 position: fixed;
                 top: 0;
@@ -1118,133 +1166,177 @@ $online_admin_names = getOnlineAdminNames();
                 overflow: hidden;
                 z-index: 105;
             }
-            .nav-links.active { width: 80%; max-width: 300px; }
-            .nav a { font-size: 1.2rem; padding: 10px 20px; }
-            
-            /* 轮播图 - 手机端优化 */
-            .carousel-wrapper { 
-                height: 50vh; 
-                min-height: 300px; 
+
+            .nav-links.active {
+                width: 80%;
+                max-width: 300px;
             }
-            
+
+            .nav a {
+                font-size: 1.2rem;
+                padding: 10px 20px;
+            }
+
+            /* 轮播图 - 手机端优化 */
+            .carousel-wrapper {
+                height: 50vh;
+                min-height: 300px;
+            }
+
             .carousel-slide img {
                 /* 确保小屏幕下图片完整显示 */
                 object-fit: contain;
                 min-height: 100%;
             }
-            
+
             /* 搜索框 */
-            .search-form { flex-direction: column; }
-            .search-input, .search-btn { width: 100%; }
-            
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-input,
+            .search-btn {
+                width: 100%;
+            }
+
             /* 图片网格 */
-            .photo-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-            
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+                gap: 20px;
+            }
+
             /* 页脚 */
-            .footer-content { grid-template-columns: 1fr; text-align: center; }
-            .footer-title::after { left: 50%; transform: translateX(-50%); }
-            .social-links { justify-content: center; }
-            
+            .footer-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .footer-title::after {
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .social-links {
+                justify-content: center;
+            }
+
             /* 公告弹窗 */
-            .announcement-content { padding: 20px; }
-            
+            .announcement-content {
+                padding: 20px;
+            }
+
             /* 显示手机端上传按钮 */
             .mobile-upload-btn {
                 display: flex;
             }
-            
+
             /* 调整返回顶部按钮位置，避免与上传按钮重叠 */
             .back-to-top {
                 bottom: 100px;
             }
         }
-        
+
         @media (max-width: 480px) {
+
             /* 统计卡片 */
-            .stats-container { grid-template-columns: 1fr; }
-            
-            /* 轮播图 - 极小屏幕优化 */
-            .carousel-wrapper { 
-                height: 40vh; 
-                min-height: 250px; 
+            .stats-container {
+                grid-template-columns: 1fr;
             }
-            
+
+            /* 轮播图 - 极小屏幕优化 */
+            .carousel-wrapper {
+                height: 40vh;
+                min-height: 250px;
+            }
+
             .carousel-caption {
                 padding: 15px;
             }
-            
+
             .carousel-title {
                 font-size: 1.2rem;
             }
-            
+
             .carousel-meta {
                 flex-wrap: wrap;
                 gap: 10px;
                 font-size: 0.8rem;
             }
-            
+
             /* 图片网格 */
-            .photo-grid { grid-template-columns: 1fr; }
-            .photo-img-container { height: 180px; }
-            
+            .photo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .photo-img-container {
+                height: 180px;
+            }
+
             /* 标题 */
-            .section-title { font-size: 1.6rem; }
-            
+            .section-title {
+                font-size: 1.6rem;
+            }
+
             /* 查看更多按钮 */
-            .view-more { margin: 30px 0 50px; }
-            
+            .view-more {
+                margin: 30px 0 50px;
+            }
+
             /* 公告标题 */
-            .announcement-title { font-size: 1.2rem; }
+            .announcement-title {
+                font-size: 1.2rem;
+            }
         }
     </style>
     <!-- 引入Font Awesome图标库 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+
 <body>
     <!-- 弹出式公告 -->
-    <?php if(!empty($announcements)): ?>
-    <div class="announcement-modal" id="announcementModal">
-        <div class="announcement-content">
-            <button class="announcement-close" id="announcementClose">&times;</button>
-            
-            <div class="announcement-header">
-                <h3 class="announcement-title"><i class="fas fa-bullhorn"></i> 系统公告</h3>
-                <div class="announcement-date" id="modalAnnouncementDate">
-                    <?php echo date('Y-m-d', strtotime($announcements[0]['created_at'])); ?>
-                </div>
-            </div>
-            
-            <div class="announcement-slider" id="modalAnnouncementSlider">
-                <?php foreach($announcements as $announcement): ?>
-                <div class="announcement-slide">
-                    <div class="announcement-text">
-                        <?php echo nl2br(htmlspecialchars($announcement['content'])); ?>
-                    </div>
-                    <div class="announcement-date">
-                        <?php echo date('Y-m-d', strtotime($announcement['created_at'])); ?>
+    <?php if (!empty($announcements)): ?>
+        <div class="announcement-modal" id="announcementModal">
+            <div class="announcement-content">
+                <button class="announcement-close" id="announcementClose">&times;</button>
+
+                <div class="announcement-header">
+                    <h3 class="announcement-title"><i class="fas fa-bullhorn"></i> 系统公告</h3>
+                    <div class="announcement-date" id="modalAnnouncementDate">
+                        <?php echo date('Y-m-d', strtotime($announcements[0]['created_at'])); ?>
                     </div>
                 </div>
-                <?php endforeach; ?>
-            </div>
-            
-            <?php if(count($announcements) > 1): ?>
-            <div class="announcement-pagination" id="announcementPagination">
-                <?php for($i = 0; $i < count($announcements); $i++): ?>
-                    <div class="announcement-dot <?php echo $i == 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></div>
-                <?php endfor; ?>
-            </div>
-            
-            <div class="announcement-actions">
-                <button class="announcement-btn" id="prevAnnouncement">上一条</button>
-                <button class="announcement-btn announcement-btn-primary" id="nextAnnouncement">下一条</button>
-            </div>
-            <?php endif; ?>
-            
-            <div class="announcement-actions" style="justify-content: center;">
-                <button class="announcement-btn announcement-btn-primary" id="confirmAnnouncement">我知道了</button>
+
+                <div class="announcement-slider" id="modalAnnouncementSlider">
+                    <?php foreach ($announcements as $announcement): ?>
+                        <div class="announcement-slide">
+                            <div class="announcement-text">
+                                <?php echo nl2br(htmlspecialchars($announcement['content'])); ?>
+                            </div>
+                            <div class="announcement-date">
+                                <?php echo date('Y-m-d', strtotime($announcement['created_at'])); ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if (count($announcements) > 1): ?>
+                    <div class="announcement-pagination" id="announcementPagination">
+                        <?php for ($i = 0; $i < count($announcements); $i++): ?>
+                            <div class="announcement-dot <?php echo $i == 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></div>
+                        <?php endfor; ?>
+                    </div>
+
+                    <div class="announcement-actions">
+                        <button class="announcement-btn" id="prevAnnouncement">上一条</button>
+                        <button class="announcement-btn announcement-btn-primary" id="nextAnnouncement">下一条</button>
+                    </div>
+                <?php endif; ?>
+
+                <div class="announcement-actions" style="justify-content: center;">
+                    <button class="announcement-btn announcement-btn-primary" id="confirmAnnouncement">我知道了</button>
+                </div>
             </div>
         </div>
-    </div>
     <?php endif; ?>
 
     <!-- 导航栏 -->
@@ -1254,21 +1346,21 @@ $online_admin_names = getOnlineAdminNames();
                 <img src="8.jpg" alt="Horizon Photos">
                 <span class="logo-text">Horizon Photos</span>
             </a>
-            
+
             <!-- 移动端菜单按钮 -->
             <button class="mobile-menu-btn" id="mobileMenuBtn">
                 <span></span>
                 <span></span>
                 <span></span>
             </button>
-            
+
             <div class="nav-links" id="navLinks">
                 <a href="index.php"><i class="fas fa-home"></i> 首页</a>
                 <a href="all_photos.php"><i class="fas fa-images"></i> 全部图片</a>
-                <?php if(isset($_SESSION['user_id'])): ?>
+                <?php if (isset($_SESSION['user_id'])): ?>
                     <a href="user_center.php"><i class="fas fa-user"></i> 用户中心</a>
                     <a href="upload.php"><i class="fas fa-upload"></i> 上传图片</a>
-                    <?php if($_SESSION['is_admin']): ?>
+                    <?php if ($_SESSION['is_admin']): ?>
                         <a href="admin_review.php"><i class="fas fa-tachometer-alt"></i> 管理员后台</a>
                     <?php endif; ?>
                     <a href="logout.php"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
@@ -1284,43 +1376,43 @@ $online_admin_names = getOnlineAdminNames();
     <div class="hero">
         <div class="container">
             <!-- 轮播图容器（使用精选图片） -->
-            <?php if(!empty($featured_photos)): ?>
-            <div class="featured-carousel fade-in">
-                <div class="carousel-wrapper" id="carouselWrapper">
-                    <?php foreach($featured_photos as $photo): ?>
-                    <div class="carousel-slide">
-                        <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
-                            <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>" 
-                                 alt="<?php echo htmlspecialchars($photo['title']); ?>">
-                            <span class="featured-badge">精选作品</span>
-                        </a>
-                        <div class="carousel-caption">
-                            <h3 class="carousel-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
-                            <div class="carousel-meta">
-                                <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($photo['username']); ?></span>
-                                <span><i class="fas fa-plane"></i> <?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
-                                <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($photo['拍摄地点']); ?></span>
+            <?php if (!empty($featured_photos)): ?>
+                <div class="featured-carousel fade-in">
+                    <div class="carousel-wrapper" id="carouselWrapper">
+                        <?php foreach ($featured_photos as $photo): ?>
+                            <div class="carousel-slide">
+                                <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
+                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
+                                        alt="<?php echo htmlspecialchars($photo['title']); ?>">
+                                    <span class="featured-badge">精选作品</span>
+                                </a>
+                                <div class="carousel-caption">
+                                    <h3 class="carousel-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
+                                    <div class="carousel-meta">
+                                        <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($photo['username']); ?></span>
+                                        <span><i class="fas fa-plane"></i> <?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
+                                        <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($photo['拍摄地点']); ?></span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
-                    <?php endforeach; ?>
+
+                    <!-- 轮播控制按钮 -->
+                    <button class="carousel-control prev" id="carouselPrev">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="carousel-control next" id="carouselNext">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+
+                    <!-- 轮播指示器 -->
+                    <div class="carousel-indicators" id="carouselIndicators">
+                        <?php for ($i = 0; $i < count($featured_photos); $i++): ?>
+                            <div class="carousel-dot <?php echo $i == 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></div>
+                        <?php endfor; ?>
+                    </div>
                 </div>
-                
-                <!-- 轮播控制按钮 -->
-                <button class="carousel-control prev" id="carouselPrev">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <button class="carousel-control next" id="carouselNext">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-                
-                <!-- 轮播指示器 -->
-                <div class="carousel-indicators" id="carouselIndicators">
-                    <?php for($i = 0; $i < count($featured_photos); $i++): ?>
-                        <div class="carousel-dot <?php echo $i == 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></div>
-                    <?php endfor; ?>
-                </div>
-            </div>
             <?php endif; ?>
         </div>
     </div>
@@ -1330,11 +1422,11 @@ $online_admin_names = getOnlineAdminNames();
         <div class="search-container fade-in">
             <!-- 搜索框上方添加标题 -->
             <div class="search-header">Horizon Photos - 收藏每片云端照片</div>
-            
+
             <form action="index.php" method="GET" class="search-form">
-                <input type="text" name="search" class="search-input" 
-                       placeholder="搜索图片（支持标题、作者、机型、拍摄地点）" 
-                       value="<?php echo htmlspecialchars($search_keyword); ?>">
+                <input type="text" name="search" class="search-input"
+                    placeholder="搜索图片（支持标题、作者、机型、拍摄地点）"
+                    value="<?php echo htmlspecialchars($search_keyword); ?>">
                 <button type="submit" class="search-btn">
                     <i class="fas fa-search"></i> 搜索
                 </button>
@@ -1354,7 +1446,7 @@ $online_admin_names = getOnlineAdminNames();
                 <div class="stat-value" id="userCount"><?php echo getTotalUsers(); ?></div>
                 <div class="stat-label">注册用户</div>
             </div>
-            
+
             <div class="stat-card">
                 <div class="stat-icon">
                     <i class="fas fa-clock"></i>
@@ -1362,7 +1454,7 @@ $online_admin_names = getOnlineAdminNames();
                 <div class="stat-value" id="reviewCount"><?php echo getPendingReviews(); ?></div>
                 <div class="stat-label">剩余审核张数</div>
             </div>
-            
+
             <!-- 新增：总通过图片数量统计卡片 -->
             <div class="stat-card">
                 <div class="stat-icon">
@@ -1373,7 +1465,7 @@ $online_admin_names = getOnlineAdminNames();
                 </div>
                 <div class="stat-label">总通过图片</div>
             </div>
-            
+
             <div class="stat-card">
                 <div class="stat-icon">
                     <i class="fas fa-user-shield"></i>
@@ -1381,8 +1473,8 @@ $online_admin_names = getOnlineAdminNames();
                 <div class="stat-value" id="adminCount"><?php echo $online_admin_count; ?></div>
                 <div class="stat-label">在线管理员</div>
                 <div class="admin-names">
-                    <?php 
-                    if(!empty($online_admin_names)) {
+                    <?php
+                    if (!empty($online_admin_names)) {
                         echo implode('、', $online_admin_names);
                     } else {
                         echo '<span style="color: var(--text-light);">暂无在线管理员</span>';
@@ -1390,22 +1482,22 @@ $online_admin_names = getOnlineAdminNames();
                     ?>
                 </div>
             </div>
-            
+
             <!-- 已移除在线用户数统计卡片 -->
         </div>
-        
+
         <!-- 最新图片区域 -->
         <h2 class="section-title fade-in">
             <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> 最新航空摄影作品
         </h2>
-        
+
         <div class="photo-grid">
-            <?php if(!empty($error)): ?>
+            <?php if (!empty($error)): ?>
                 <div class="error-message">
                     <?php echo $error; ?>
                 </div>
             <?php else: ?>
-                <?php if(!empty($search_error)): ?>
+                <?php if (!empty($search_error)): ?>
                     <div class="search-empty">
                         <i class="fas fa-search"></i>
                         <h3><?php echo $search_error; ?></h3>
@@ -1413,7 +1505,7 @@ $online_admin_names = getOnlineAdminNames();
                             返回查看全部最新图片
                         </a>
                     </div>
-                <?php elseif(empty($display_photos)): ?>
+                <?php elseif (empty($display_photos)): ?>
                     <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px;">
                         <i class="fas fa-images" style="font-size: 3rem; color: var(--text-light); margin-bottom: 20px;"></i>
                         <h3 style="color: var(--text-medium); margin-bottom: 15px;">暂无通过审核的图片</h3>
@@ -1421,8 +1513,8 @@ $online_admin_names = getOnlineAdminNames();
                     </div>
                 <?php else: ?>
                     <?php $counter = 0; ?>
-                    <?php foreach($display_photos as $photo): ?>
-                        <?php 
+                    <?php foreach ($display_photos as $photo): ?>
+                        <?php
                         $counter++;
                         $delay = ($counter % 4) * 0.1; // 错开动画延迟，提升视觉效果
                         ?>
@@ -1430,9 +1522,9 @@ $online_admin_names = getOnlineAdminNames();
                             <span class="photo-category"><?php echo ucfirst($photo['category']); ?></span>
                             <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
                                 <div class="photo-img-container">
-                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>" 
-                                         alt="<?php echo htmlspecialchars($photo['title']); ?>" 
-                                         loading="lazy">
+                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
+                                        alt="<?php echo htmlspecialchars($photo['title']); ?>"
+                                        loading="lazy">
                                 </div>
                             </a>
                             <div class="photo-info">
@@ -1448,7 +1540,7 @@ $online_admin_names = getOnlineAdminNames();
                 <?php endif; ?>
             <?php endif; ?>
         </div>
-        
+
         <!-- 查看更多按钮 -->
         <div class="view-more fade-in">
             <a href="all_photos.php?<?php echo !empty($search_keyword) ? 'search=' . urlencode($search_keyword) : ''; ?>">
@@ -1456,7 +1548,7 @@ $online_admin_names = getOnlineAdminNames();
             </a>
         </div>
     </div>
-    
+
     <!-- 页脚 -->
     <footer>
         <div class="container">
@@ -1477,7 +1569,7 @@ $online_admin_names = getOnlineAdminNames();
                         <a href="#"><i class="fab fa-twitter"></i></a>
                     </div>
                 </div>
-                
+
                 <div class="footer-links-container">
                     <h3 class="footer-title">快速链接</h3>
                     <ul class="footer-links">
@@ -1488,7 +1580,7 @@ $online_admin_names = getOnlineAdminNames();
                         <li><a href="#">联系我们</a></li>
                     </ul>
                 </div>
-                
+
                 <div class="footer-links-container">
                     <h3 class="footer-title">帮助中心</h3>
                     <ul class="footer-links">
@@ -1500,18 +1592,18 @@ $online_admin_names = getOnlineAdminNames();
                     </ul>
                 </div>
             </div>
-            
+
             <div class="copyright">
                 &copy; <?php echo date('Y'); ?> Horizon Photos - 保留所有权利
             </div>
         </div>
     </footer>
-    
+
     <!-- 返回顶部按钮 -->
     <div class="back-to-top" id="backToTop">
         <i class="fas fa-arrow-up"></i>
     </div>
-    
+
     <!-- 手机端快速上传按钮 -->
     <a href="upload.php" class="mobile-upload-btn" title="快速上传图片">
         <i class="fas fa-cloud-upload-alt"></i>
@@ -1522,7 +1614,7 @@ $online_admin_names = getOnlineAdminNames();
         window.addEventListener('scroll', function() {
             const nav = document.getElementById('mainNav');
             const backToTop = document.getElementById('backToTop');
-            
+
             if (window.scrollY > 50) {
                 nav.classList.add('scrolled');
                 backToTop.classList.add('show');
@@ -1530,7 +1622,7 @@ $online_admin_names = getOnlineAdminNames();
                 nav.classList.remove('scrolled');
                 backToTop.classList.remove('show');
             }
-            
+
             // 滚动触发元素淡入动画
             const fadeElements = document.querySelectorAll('.fade-in');
             fadeElements.forEach(element => {
@@ -1541,7 +1633,7 @@ $online_admin_names = getOnlineAdminNames();
                 }
             });
         });
-        
+
         // 返回顶部功能
         document.getElementById('backToTop').addEventListener('click', function() {
             window.scrollTo({
@@ -1549,17 +1641,17 @@ $online_admin_names = getOnlineAdminNames();
                 behavior: 'smooth'
             });
         });
-        
+
         // 移动端菜单功能
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const navLinks = document.getElementById('navLinks');
-        
+
         mobileMenuBtn.addEventListener('click', function() {
             this.classList.toggle('active');
             navLinks.classList.toggle('active');
             document.body.classList.toggle('overflow-hidden');
         });
-        
+
         // 移动端点击导航链接后关闭菜单
         const navLinkItems = document.querySelectorAll('.nav-links a');
         navLinkItems.forEach(link => {
@@ -1571,12 +1663,12 @@ $online_admin_names = getOnlineAdminNames();
                 }
             });
         });
-        
+
         // 数字增长动画（统计卡片）
         function animateValue(id, start, end, duration) {
             const obj = document.getElementById(id);
             if (!obj) return;
-            
+
             let startTimestamp = null;
             const step = (timestamp) => {
                 if (!startTimestamp) startTimestamp = timestamp;
@@ -1588,12 +1680,12 @@ $online_admin_names = getOnlineAdminNames();
             };
             window.requestAnimationFrame(step);
         }
-        
+
         // 公告弹窗功能
         function initAnnouncementModal() {
             const modal = document.getElementById('announcementModal');
             if (!modal) return;
-            
+
             const closeBtn = document.getElementById('announcementClose');
             const confirmBtn = document.getElementById('confirmAnnouncement');
             const slider = document.getElementById('modalAnnouncementSlider');
@@ -1601,52 +1693,52 @@ $online_admin_names = getOnlineAdminNames();
             const prevBtn = document.getElementById('prevAnnouncement');
             const nextBtn = document.getElementById('nextAnnouncement');
             const dots = document.querySelectorAll('.announcement-dot');
-            
+
             let currentIndex = 0;
-            
+
             // 1秒后显示弹窗
             setTimeout(() => {
                 modal.classList.add('active');
             }, 1000);
-            
+
             // 关闭弹窗
             const closeModal = () => {
                 modal.classList.remove('active');
             };
-            
+
             closeBtn.addEventListener('click', closeModal);
             confirmBtn.addEventListener('click', closeModal);
-            
+
             // 点击弹窗外部关闭
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     closeModal();
                 }
             });
-            
+
             // 切换公告
             const goToSlide = (index) => {
                 if (!slider || slides.length <= 1) return;
-                
+
                 currentIndex = index;
                 if (currentIndex < 0) currentIndex = slides.length - 1;
                 if (currentIndex >= slides.length) currentIndex = 0;
-                
+
                 slider.style.transform = `translateX(-${currentIndex * 100}%)`;
-                
+
                 // 更新公告日期
                 const dateElements = document.querySelectorAll('.announcement-slide .announcement-date');
                 const modalDate = document.getElementById('modalAnnouncementDate');
                 if (modalDate && dateElements[currentIndex]) {
                     modalDate.textContent = dateElements[currentIndex].textContent;
                 }
-                
+
                 // 更新指示器
                 dots.forEach((dot, i) => {
                     dot.classList.toggle('active', i === currentIndex);
                 });
             };
-            
+
             // 上一条/下一条按钮
             if (prevBtn) {
                 prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
@@ -1654,7 +1746,7 @@ $online_admin_names = getOnlineAdminNames();
             if (nextBtn) {
                 nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
             }
-            
+
             // 点击指示器切换公告
             dots.forEach(dot => {
                 dot.addEventListener('click', () => {
@@ -1663,12 +1755,12 @@ $online_admin_names = getOnlineAdminNames();
                 });
             });
         }
-        
+
         // 轮播图功能（使用精选图片）
         function initCarousel() {
             const carouselWrapper = document.getElementById('carouselWrapper');
             if (!carouselWrapper) return;
-            
+
             const slides = carouselWrapper.querySelectorAll('.carousel-slide');
             const prevBtn = document.getElementById('carouselPrev');
             const nextBtn = document.getElementById('carouselNext');
@@ -1676,50 +1768,50 @@ $online_admin_names = getOnlineAdminNames();
             const totalSlides = slides.length;
             let currentIndex = 0;
             let slideInterval;
-            
+
             // 切换轮播图
             function goToSlide(index) {
                 if (index < 0) index = totalSlides - 1;
                 if (index >= totalSlides) index = 0;
-                
+
                 currentIndex = index;
                 const offset = -currentIndex * 100;
                 carouselWrapper.style.transform = `translateX(${offset}%)`;
-                
+
                 // 更新指示器
                 dots.forEach((dot, i) => {
                     dot.classList.toggle('active', i === currentIndex);
                 });
             }
-            
+
             // 下一张
             function nextSlide() {
                 goToSlide(currentIndex + 1);
             }
-            
+
             // 自动播放（5秒切换一次）
             function startSlideInterval() {
                 slideInterval = setInterval(nextSlide, 5000);
             }
-            
+
             // 停止自动播放
             function stopSlideInterval() {
                 clearInterval(slideInterval);
             }
-            
+
             // 按钮事件
             prevBtn.addEventListener('click', () => {
                 stopSlideInterval();
                 goToSlide(currentIndex - 1);
                 startSlideInterval();
             });
-            
+
             nextBtn.addEventListener('click', () => {
                 stopSlideInterval();
                 nextSlide();
                 startSlideInterval();
             });
-            
+
             // 指示器事件
             dots.forEach(dot => {
                 dot.addEventListener('click', () => {
@@ -1729,36 +1821,36 @@ $online_admin_names = getOnlineAdminNames();
                     startSlideInterval();
                 });
             });
-            
+
             // 鼠标悬停停止播放
             carouselWrapper.addEventListener('mouseenter', stopSlideInterval);
             carouselWrapper.addEventListener('mouseleave', startSlideInterval);
-            
+
             // 启动自动播放
             startSlideInterval();
         }
-        
+
         // 页面加载完成后初始化
         window.addEventListener('load', function() {
             // 触发初始滚动检查
             window.dispatchEvent(new Event('scroll'));
-            
+
             // 初始化统计数字动画
             const userCount = parseInt(document.getElementById('userCount').innerText) || 0;
             const reviewCount = parseInt(document.getElementById('reviewCount').innerText) || 0;
             const adminCount = parseInt(document.getElementById('adminCount').innerText) || 0;
-            
+
             animateValue('userCount', 0, userCount, 1500);
             animateValue('reviewCount', 0, reviewCount, 1500);
             animateValue('adminCount', 0, adminCount, 1500);
-            
+
             // 初始化公告弹窗
             initAnnouncementModal();
-            
+
             // 初始化轮播图
             initCarousel();
         });
-        
+
         // 窗口 resize 时重置导航菜单
         window.addEventListener('resize', function() {
             if (window.innerWidth > 768) {
@@ -1769,4 +1861,5 @@ $online_admin_names = getOnlineAdminNames();
         });
     </script>
 </body>
+
 </html>

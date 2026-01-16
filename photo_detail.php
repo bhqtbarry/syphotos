@@ -394,17 +394,22 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
         .photo-content {
             padding: 30px;
             display: grid;
-            grid-template-columns: 1fr 350px;
+            /* grid-template-columns: 1fr 350px; */
             gap: 30px;
+            justify-items: center;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 1400px) {
             .photo-content {
                 grid-template-columns: 1fr;
+                justify-items: center;
             }
         }
 
         .photo-image-container {
+            margin: 0 auto;
+            max-width: 100%;
+            width: fit-content;
             border-radius: var(--border-radius);
             overflow: hidden;
             background-color: #f8f9fa;
@@ -1138,6 +1143,33 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                             <span class="info-label"><i class="fas fa-camera"></i> 拍摄设备</span>
                             <span class="info-value"><?php echo !empty($photo['camera_model']) ? htmlspecialchars($photo['camera_model']) : '未填写'; ?></span>
                         </li>
+                        <li>
+                            <span class="info-label">
+                                <i class="fas fa-hashtag"></i> FR24上最近的航班
+                            </span>
+                            <span class="info-value">
+                                <a href="https://www.flightradar24.com/data/aircraft/<?php echo urlencode($photo['registration_number']); ?>"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    <?php echo htmlspecialchars($photo['registration_number']); ?>
+                                </a>
+                            </span>
+                        </li>
+                        <li>
+                            <span class="info-label">
+                                <i class="fas fa-hashtag"></i> JetPhotos上的图片页面
+                            </span>
+                            <span class="info-value">
+                                <a href="https://www.jetphotos.com/registration/<?php echo urlencode($photo['registration_number']); ?>"
+                                    target="_blank"
+                                    rel="noopener noreferrer">
+                                    <?php echo htmlspecialchars($photo['registration_number']); ?>
+                                </a>
+                            </span>
+                        </li>
+
+
+
                     </ul>
                 </div>
 
@@ -1220,17 +1252,26 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                 if (count($related_photos) > 0) {
                     foreach ($related_photos as $rp) {
                         echo '<div class="related-item">';
+
+                        echo '<a href="photo_detail.php?id=' . $rp['id'] . '" class="related-link">';
+
                         echo '<div class="related-img-container">';
-                        echo '<img src="uploads/' . htmlspecialchars($rp['filename']) . '" alt="' . htmlspecialchars($rp['title']) . '" class="related-img">';
+                        echo '<img src="uploads/' . htmlspecialchars($rp['filename']) . '" 
+                alt="' . htmlspecialchars($rp['title']) . '" 
+                class="related-img">';
                         echo '<span class="related-category">' . htmlspecialchars($rp['category']) . '</span>';
                         echo '</div>';
+
                         echo '<div class="related-info">';
-                        echo '<a href="photo_detail.php?id=' . $rp['id'] . '" class="related-title">' . htmlspecialchars($rp['title']) . '</a>';
+                        echo '<div class="related-title">' . htmlspecialchars($rp['title']) . '</div>';
                         echo '<div class="related-meta">';
                         echo '<span><i class="far fa-eye"></i> ' . ($rp['views'] ?? 0) . '</span>';
                         echo '<span><i class="far fa-calendar"></i> ' . date('m-d', strtotime($rp['created_at'])) . '</span>';
                         echo '</div>';
                         echo '</div>';
+
+                        echo '</a>';
+
                         echo '</div>';
                     }
                 } else {
