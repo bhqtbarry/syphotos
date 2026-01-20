@@ -1,6 +1,8 @@
 <?php
-require __DIR__ . '/config.php';
-require __DIR__ . '/mail.php';
+
+require __DIR__ . '/src/mail.php';
+require 'db_connect.php';
+
 
 $message = '已发送验证邮件，请点击邮件中的链接完成注册。';
 $email = trim($_GET['email'] ?? '');

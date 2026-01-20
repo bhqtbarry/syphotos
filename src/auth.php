@@ -27,7 +27,7 @@ function authenticate(string $username, string $password): ?array
     return $user;
 }
 
-function send_verification_email(string $email, string $token): void
+function send_verification_email1buyongle (string $email, string $token): void
 {
     $config = require __DIR__ . '/../config/config.php';
     $link = $config['base_url'] . '/verify.php?token=' . urlencode($token);
