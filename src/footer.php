@@ -1,31 +1,49 @@
-</main>
-<footer class="bg-dark text-light mt-5">
-    <div class="container py-4">
-        <div class="row">
-            <div class="col-md-4">
-                <h5>SyPhotos</h5>
-                <p>Modern aviation photo library.</p>
+    <!-- 页脚 -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-about">
+                    <div class="footer-logo">
+                        <img src="8.jpg" alt="Horizon Photos">
+                        <span>Horizon Photos</span>
+                    </div>
+                    <p class="footer-desc">
+                        专注于航空摄影作品的分享与交流平台，连接全球航空摄影爱好者，
+                        记录每一个精彩的飞行瞬间，探索天空中的无限可能。
+                    </p>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-weibo"></i></a>
+                        <a href="#"><i class="fab fa-wechat"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                    </div>
+                </div>
+
+                <div class="footer-links-container">
+                    <h3 class="footer-title">快速链接</h3>
+                    <ul class="footer-links">
+                        <li><a href="index.php">首页</a></li>
+                        <li><a href="all_photos.php">全部作品</a></li>
+                        <li><a href="ladder.php">排行榜</a></li>
+                        <li><a href="#">关于我们</a></li>
+                        <li><a href="#">联系我们</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-links-container">
+                    <h3 class="footer-title">帮助中心</h3>
+                    <ul class="footer-links">
+                        <li><a href="#">使用指南</a></li>
+                        <li><a href="#">常见问题</a></li>
+                        <li><a href="#">用户协议</a></li>
+                        <li><a href="#">隐私政策</a></li>
+                        <li><a href="#">版权说明</a></li>
+                    </ul>
+                </div>
             </div>
-            <div class="col-md-4">
-                <h6>Explore</h6>
-                <ul class="list-unstyled">
-                    <li><a href="/index.php" class="text-light">Latest photos</a></li>
-                    <li><a href="/upload.php" class="text-light">Upload</a></li>
-                    <li><a href="/search.php" class="text-light">Search</a></li>
-                </ul>
-            </div>
-            <div class="col-md-4">
-                <h6>Support</h6>
-                <ul class="list-unstyled">
-                    <li><a href="#" class="text-light">Privacy</a></li>
-                    <li><a href="#" class="text-light">Terms</a></li>
-                    <li><a href="mailto:support@syphotos.cn" class="text-light">Contact</a></li>
-                </ul>
+
+            <div class="copyright">
+                &copy; <?php echo date('Y'); ?> Horizon Photos - 保留所有权利
             </div>
         </div>
-        <div class="text-center mt-3">© <?php echo date('Y'); ?> SyPhotos.cn</div>
-    </div>
-</footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    </footer>

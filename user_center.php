@@ -824,42 +824,7 @@ try {
     </style>
 </head>
 <body>
-    <div class="nav">
-        <div class="nav-container">
-            <a href="index.php" class="logo">
-                <i class="fas fa-plane"></i>
-                <span>Horizon Photos</span>
-            </a>
-            <div class="nav-links">
-                <a href="index.php">
-                    <i class="fas fa-home"></i>
-                    <span>首页</span>
-                </a>
-                <a href="all_photos.php">
-                    <i class="fas fa-images"></i>
-                    <span>全部图片</span>
-                </a>
-                <a href="user_center.php" class="active">
-                    <i class="fas fa-user"></i>
-                    <span>用户中心</span>
-                </a>
-                <a href="upload.php">
-                    <i class="fas fa-upload"></i>
-                    <span>上传图片</span>
-                </a>
-                <?php if($_SESSION['is_admin']): ?>
-                    <a href="admin_review.php">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>管理后台</span>
-                    </a>
-                <?php endif; ?>
-                <a href="logout.php">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>退出</span>
-                </a>
-            </div>
-        </div>
-    </div>
+    <?php include __DIR__ . '/src/nav.php'; ?>
 
     <div class="modal-overlay" id="deleteModal">
         <div class="modal">
@@ -1405,5 +1370,6 @@ try {
             }
         });
     </script>
+    <?php include __DIR__ . '/src/footer.php'; ?>
 </body>
 </html>

@@ -1,107 +1,7 @@
 <?php
-require 'db_connect.php';
-require 'stats_functions.php';
-session_start();
-
-// 获取最新启用的公告
-$announcements = [];
-try {
-    $stmt = $pdo->query("SELECT * FROM announcements WHERE is_active = 1 ORDER BY created_at DESC LIMIT 3");
-    $announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    // 公告查询失败不影响页面主体功能
-}
-
-// 如果用户已登录，更新活动时间
-if (isset($_SESSION['user_id'])) {
-    updateUserActivity($_SESSION['user_id']);
-}
-
-// 获取已通过审核的图片数量
-$approved_photos_count = getApprovedPhotosCount();
-
-// 获取精选图片（用于轮播）
-$featured_photos = [];
-try {
-    $stmt = $pdo->prepare("SELECT p.*, u.username 
-                          FROM photos p 
-                          INNER JOIN users u ON p.user_id = u.id 
-                          WHERE p.approved = 1 AND p.is_featured = 1
-                          ORDER BY p.created_at DESC 
-                          LIMIT 5"); // 最多5张精选图片用于轮播
-    $stmt->execute();
-    $featured_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $error = "获取精选图片失败: " . $e->getMessage();
-    $featured_photos = [];
-}
-
-// 获取最新通过审核的图片（用于首页图片展示区）
-$display_photos = [];
-$total_display = 12; // 首页展示12张图片
-$search_keyword = '';
-$search_error = '';
-
-// 处理搜索请求（支持标题、作者、机型、拍摄地点搜索）
-if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
-    $search_keyword = trim($_GET['search']);
-    try {
-        $search_stmt = $pdo->prepare("SELECT p.*, u.username 
-                                    FROM photos p 
-                                    INNER JOIN users u ON p.user_id = u.id 
-                                    WHERE p.approved = 1 
-                                    AND (
-                                        p.title LIKE :keyword OR 
-                                        u.username LIKE :keyword OR 
-                                        p.aircraft_model LIKE :keyword OR 
-                                        p.拍摄地点 LIKE :keyword
-                                    )
-                                    ORDER BY p.created_at DESC 
-                                    LIMIT :limit");
-        $search_param = "%{$search_keyword}%";
-        $search_stmt->bindValue(':keyword', $search_param, PDO::PARAM_STR);
-        $search_stmt->bindValue(':limit', $total_display, PDO::PARAM_INT);
-        $search_stmt->execute();
-        $display_photos = $search_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        // 搜索无结果提示
-        if (empty($display_photos)) {
-            $search_error = "未找到包含「{$search_keyword}」的图片，建议尝试其他关键词";
-        }
-    } catch (PDOException $e) {
-        $error = "搜索图片失败: " . $e->getMessage();
-        $display_photos = [];
-    }
-} else {
-    // 无搜索时，默认加载最新通过的图片
-    try {
-        $stmt = $pdo->prepare("SELECT p.*, u.username 
-                              FROM photos p 
-                              INNER JOIN users u ON p.user_id = u.id 
-                              WHERE p.approved = 1 
-                              ORDER BY p.created_at DESC 
-                              LIMIT :limit");
-        $stmt->bindValue(':limit', $total_display, PDO::PARAM_INT);
-        $stmt->execute();
-        $display_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $error = "获取图片失败: " . $e->getMessage();
-        $display_photos = [];
-    }
-}
-
-// 获取在线管理员信息
-$online_admin_count = getOnlineAdmins();
-$online_admin_names = getOnlineAdminNames();
+// nav.php 不输出 <html> <body>，只管导航
 ?>
-<!DOCTYPE html>
-<html lang="zh-CN">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horizon Photos - 首页</title>
-    <style>
+  <style>
         :root {
             --primary: #165DFF;
             --primary-light: #4080FF;
@@ -1287,59 +1187,12 @@ $online_admin_names = getOnlineAdminNames();
                 font-size: 1.2rem;
             }
         }
+        
     </style>
-    <!-- 引入Font Awesome图标库 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
 
-<body>
-    <!-- 弹出式公告 -->
-    <?php if (!empty($announcements)): ?>
-        <div class="announcement-modal" id="announcementModal">
-            <div class="announcement-content">
-                <button class="announcement-close" id="announcementClose">&times;</button>
 
-                <div class="announcement-header">
-                    <h3 class="announcement-title"><i class="fas fa-bullhorn"></i> 系统公告</h3>
-                    <div class="announcement-date" id="modalAnnouncementDate">
-                        <?php echo date('Y-m-d', strtotime($announcements[0]['created_at'])); ?>
-                    </div>
-                </div>
 
-                <div class="announcement-slider" id="modalAnnouncementSlider">
-                    <?php foreach ($announcements as $announcement): ?>
-                        <div class="announcement-slide">
-                            <div class="announcement-text">
-                                <?php echo nl2br(htmlspecialchars($announcement['content'])); ?>
-                            </div>
-                            <div class="announcement-date">
-                                <?php echo date('Y-m-d', strtotime($announcement['created_at'])); ?>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-
-                <?php if (count($announcements) > 1): ?>
-                    <div class="announcement-pagination" id="announcementPagination">
-                        <?php for ($i = 0; $i < count($announcements); $i++): ?>
-                            <div class="announcement-dot <?php echo $i == 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></div>
-                        <?php endfor; ?>
-                    </div>
-
-                    <div class="announcement-actions">
-                        <button class="announcement-btn" id="prevAnnouncement">上一条</button>
-                        <button class="announcement-btn announcement-btn-primary" id="nextAnnouncement">下一条</button>
-                    </div>
-                <?php endif; ?>
-
-                <div class="announcement-actions" style="justify-content: center;">
-                    <button class="announcement-btn announcement-btn-primary" id="confirmAnnouncement">我知道了</button>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <!-- 导航栏 -->
+ <!-- 导航栏 -->
     <div class="nav" id="mainNav">
         <div class="container nav-container">
             <a href="index.php" class="logo">
@@ -1371,198 +1224,7 @@ $online_admin_names = getOnlineAdminNames();
             </div>
         </div>
     </div>
-
-    <!-- Hero区域（轮播图） -->
-    <div class="hero">
-        <div class="container">
-            <!-- 轮播图容器（使用精选图片） -->
-            <?php if (!empty($featured_photos)): ?>
-                <div class="featured-carousel fade-in">
-                    <div class="carousel-wrapper" id="carouselWrapper">
-                        <?php foreach ($featured_photos as $photo): ?>
-                            <div class="carousel-slide">
-                                <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
-                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
-                                        alt="<?php echo htmlspecialchars($photo['title']); ?>">
-                                    <span class="featured-badge">精选作品</span>
-                                </a>
-                                <div class="carousel-caption">
-                                    <h3 class="carousel-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
-                                    <div class="carousel-meta">
-                                        <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($photo['username']); ?></span>
-                                        <span><i class="fas fa-plane"></i> <?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
-                                        <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($photo['拍摄地点']); ?></span>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <!-- 轮播控制按钮 -->
-                    <button class="carousel-control prev" id="carouselPrev">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <button class="carousel-control next" id="carouselNext">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-
-                    <!-- 轮播指示器 -->
-                    <div class="carousel-indicators" id="carouselIndicators">
-                        <?php for ($i = 0; $i < count($featured_photos); $i++): ?>
-                            <div class="carousel-dot <?php echo $i == 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></div>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <!-- 搜索框（悬浮在Hero区域下方） -->
-    <div class="container">
-        <div class="search-container fade-in">
-            <!-- 搜索框上方添加标题 -->
-            <div class="search-header">Horizon Photos - 收藏每片云端照片</div>
-
-            <form action="index.php" method="GET" class="search-form">
-                <input type="text" name="search" class="search-input"
-                    placeholder="搜索图片（支持标题、作者、机型、拍摄地点）"
-                    value="<?php echo htmlspecialchars($search_keyword); ?>">
-                <button type="submit" class="search-btn">
-                    <i class="fas fa-search"></i> 搜索
-                </button>
-            </form>
-            <p class="search-hint">示例：波音747、北京首都机场、摄影师小李</p>
-        </div>
-    </div>
-
-    <!-- 主体内容 -->
-    <div class="container">
-        <!-- 统计信息区域 -->
-        <div class="stats-container fade-in">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-value" id="userCount"><?php echo getTotalUsers(); ?></div>
-                <div class="stat-label">注册用户</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-value" id="reviewCount"><?php echo getPendingReviews(); ?></div>
-                <div class="stat-label">剩余审核张数</div>
-            </div>
-
-            <!-- 新增：总通过图片数量统计卡片 -->
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-images"></i>
-                </div>
-                <div class="stat-value">
-                    <?php echo number_format($approved_photos_count); ?>
-                </div>
-                <div class="stat-label">总通过图片</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                <div class="stat-value" id="adminCount"><?php echo $online_admin_count; ?></div>
-                <div class="stat-label">在线管理员</div>
-                <div class="admin-names">
-                    <?php
-                    if (!empty($online_admin_names)) {
-                        echo implode('、', $online_admin_names);
-                    } else {
-                        echo '<span style="color: var(--text-light);">暂无在线管理员</span>';
-                    }
-                    ?>
-                </div>
-            </div>
-
-            <!-- 已移除在线用户数统计卡片 -->
-        </div>
-
-        <!-- 最新图片区域 -->
-        <h2 class="section-title fade-in">
-            <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> 最新航空摄影作品
-        </h2>
-
-        <div class="photo-grid">
-            <?php if (!empty($error)): ?>
-                <div class="error-message">
-                    <?php echo $error; ?>
-                </div>
-            <?php else: ?>
-                <?php if (!empty($search_error)): ?>
-                    <div class="search-empty">
-                        <i class="fas fa-search"></i>
-                        <h3><?php echo $search_error; ?></h3>
-                        <a href="index.php" style="color: var(--primary); text-decoration: underline; margin-top: 10px; display: inline-block;">
-                            返回查看全部最新图片
-                        </a>
-                    </div>
-                <?php elseif (empty($display_photos)): ?>
-                    <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px;">
-                        <i class="fas fa-images" style="font-size: 3rem; color: var(--text-light); margin-bottom: 20px;"></i>
-                        <h3 style="color: var(--text-medium); margin-bottom: 15px;">暂无通过审核的图片</h3>
-                        <p style="color: var(--text-light);">敬请期待用户上传的精彩作品</p>
-                    </div>
-                <?php else: ?>
-                    <?php $counter = 0; ?>
-                    <?php foreach ($display_photos as $photo): ?>
-                        <?php
-                        $counter++;
-                        $delay = ($counter % 4) * 0.1; // 错开动画延迟，提升视觉效果
-                        ?>
-                        <div class="photo-item fade-in" style="transition-delay: <?php echo $delay; ?>s">
-                            <span class="photo-category"><?php echo ucfirst($photo['category']); ?></span>
-                            <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
-                                <div class="photo-img-container">
-                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
-                                        alt="<?php echo htmlspecialchars($photo['title']); ?>"
-                                        loading="lazy">
-                                </div>
-                            </a>
-                            <div class="photo-info">
-                                <h3 class="photo-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
-                                <div class="photo-meta">
-                                    <span><i class="fas fa-user"></i> 作者: <?php echo htmlspecialchars($photo['username']); ?></span>
-                                    <span><i class="fas fa-plane"></i> 型号: <?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
-                                    <span><i class="fas fa-map-marker-alt"></i> 地点: <?php echo htmlspecialchars($photo['拍摄地点']); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            <?php endif; ?>
-        </div>
-
-        <!-- 查看更多按钮 -->
-        <div class="view-more fade-in">
-            <a href="all_photos.php?<?php echo !empty($search_keyword) ? 'search=' . urlencode($search_keyword) : ''; ?>">
-                <button class="btn">查看更多作品 <i class="fas fa-arrow-right"></i></button>
-            </a>
-        </div>
-    </div>
-
-    <!-- 页脚 -->
-<?php include __DIR__ . '/src/footer.php'; ?>
-
-    <!-- 返回顶部按钮 -->
-    <div class="back-to-top" id="backToTop">
-        <i class="fas fa-arrow-up"></i>
-    </div>
-
-    <!-- 手机端快速上传按钮 -->
-    <a href="upload.php" class="mobile-upload-btn" title="快速上传图片">
-        <i class="fas fa-cloud-upload-alt"></i>
-    </a>
-
-    <script>
+   <script>
         // 导航栏滚动效果
         window.addEventListener('scroll', function() {
             const nav = document.getElementById('mainNav');
@@ -1587,13 +1249,7 @@ $online_admin_names = getOnlineAdminNames();
             });
         });
 
-        // 返回顶部功能
-        document.getElementById('backToTop').addEventListener('click', function() {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
+ 
 
         // 移动端菜单功能
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
@@ -1783,26 +1439,7 @@ $online_admin_names = getOnlineAdminNames();
             startSlideInterval();
         }
 
-        // 页面加载完成后初始化
-        window.addEventListener('load', function() {
-            // 触发初始滚动检查
-            window.dispatchEvent(new Event('scroll'));
 
-            // 初始化统计数字动画
-            const userCount = parseInt(document.getElementById('userCount').innerText) || 0;
-            const reviewCount = parseInt(document.getElementById('reviewCount').innerText) || 0;
-            const adminCount = parseInt(document.getElementById('adminCount').innerText) || 0;
-
-            animateValue('userCount', 0, userCount, 1500);
-            animateValue('reviewCount', 0, reviewCount, 1500);
-            animateValue('adminCount', 0, adminCount, 1500);
-
-            // 初始化公告弹窗
-            initAnnouncementModal();
-
-            // 初始化轮播图
-            initCarousel();
-        });
 
         // 窗口 resize 时重置导航菜单
         window.addEventListener('resize', function() {
@@ -1813,6 +1450,3 @@ $online_admin_names = getOnlineAdminNames();
             }
         });
     </script>
-</body>
-
-</html>
