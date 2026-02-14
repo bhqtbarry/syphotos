@@ -58,6 +58,41 @@ function calculateCompressedSize($originalWidth, $originalHeight, $originalSize,
 /**
  * 图片压缩函数
  */
+
+
+function getExifFromService(string $filePath): ?array
+{
+    $ch = curl_init('http://127.0.0.1/srv/exif-service/public/');
+
+    $post = [
+        'file' => new CURLFile($filePath)
+    ];
+
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $post,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        error_log('EXIF service curl error: ' . curl_error($ch));
+        curl_close($ch);
+        return null;
+    }
+
+    curl_close($ch);
+
+    $json = json_decode($response, true);
+    if (!is_array($json) || isset($json['error'])) {
+        error_log('EXIF service invalid response: ' . $response);
+        return null;
+    }
+
+    return $json;
+}
 function compressImage($sourcePath, $destPath, &$compressedInfo, $maxSize = 5242880)
 {
     $imageInfo = getimagesize($sourcePath);
@@ -463,6 +498,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
             }
             // 2. 再添加水印
             else {
+                $exif = getExifFromService($temp_path);
+
                 $watermarkResult = addWatermark(
                     $temp_path,
                     $target_path,
@@ -555,7 +592,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                         } else {
                             $stmt->bindValue(':Aperture', $aperture_value);
                         }
-                     
+
                         $stmt->execute([
                             ':user_id' => $_SESSION['user_id'],
                             ':title' => $_POST['title'],
@@ -640,7 +677,7 @@ function debounce($func, $wait = 500)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Horizon Photos - 上传图片</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/exif-js"></script> -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <style>
         :root {
@@ -1636,6 +1673,82 @@ function debounce($func, $wait = 500)
 
         // 图片预览功能
         const photoInput = document.getElementById('photo');
+
+        photoInput.addEventListener('change', async function() {
+            if (!this.files || !this.files[0]) return;
+
+            const file = this.files[0];
+
+            // ===== 1️⃣ 先显示预览（你已有的话可跳过） =====
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // ===== 2️⃣ 调用 exif-service =====
+            const formData = new FormData();
+            formData.append('file', file); // ⚠️ 名字必须是 file
+
+            try {
+                const resp = await fetch('/srv/exif-service/public/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const respose = await resp.json();
+                data = respose[0];
+
+                if (data.error) {
+                    console.warn('EXIF 识别失败:', data.error);
+                    return;
+                }
+          
+
+                // ===== 3️⃣ 自动填表单 =====
+                fillIfEmpty('cameraModel', data.Model);
+                fillIfEmpty('lensModel', data.LensModel);
+                fillIfEmpty('FocalLength', data.FocalLength);
+                fillIfEmpty('ISO', data.ISO);
+                fillIfEmpty('F', data.Aperture);
+                fillIfEmpty('Shutter', data.ShutterSpeed);
+                // fillIfEmpty('shooting_time', data.DateTimeOriginal ? data.DateTimeOriginal.replace(' ', 'T') : '');
+                if (data.DateTimeOriginal) {
+                    const takenDate = data.DateTimeOriginal.trim();
+
+                    const parts = takenDate.split(' ');
+                    if (parts.length === 2) {
+                        const dateParts = parts[0].split(':');
+                        const timeParts = parts[1].split(':');
+
+                        if (dateParts.length === 3 && timeParts.length >= 2) {
+                            const formattedDate =
+                                `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}T` +
+                                `${timeParts[0]}:${timeParts[1]}`;
+
+
+                            fillIfEmpty('shooting_time', formattedDate);
+                        }
+                    }
+                }
+
+
+            } catch (e) {
+                console.error('EXIF 服务调用失败', e);
+            }
+        });
+
+        function fillIfEmpty(id, value) {
+            if (!value) return;
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            // ⭐ 不覆盖用户已经手填的内容
+            if (!el.value || el.value.trim() === '') {
+                el.value = value;
+            }
+        }
         const imagePreview = document.getElementById('imagePreview');
         const removePreview = document.getElementById('removePreview');
         const originalDimensions = document.getElementById('originalDimensions');
@@ -1649,73 +1762,73 @@ function debounce($func, $wait = 500)
                 originalFileSize = file.size;
 
                 /* ---------- 读取 EXIF ---------- */
-                const exifInfo = document.getElementById('exifInfo');
+                // const exifInfo = document.getElementById('exifInfo');
 
-                EXIF.getData(file, function() {
-                    if (!exifInfo) return;
+                // EXIF.getData(file, function() {
+                //     if (!exifInfo) return;
 
-                    const make = EXIF.getTag(this, 'Make') || '';
-                    const model = EXIF.getTag(this, 'Model') || '';
-                    const lens = EXIF.getTag(this, 'LensModel') || 'Unknown Lens';
-                    const focal = EXIF.getTag(this, 'FocalLength');
-                    const iso = EXIF.getTag(this, 'ISOSpeedRatings');
-                    const fnum = EXIF.getTag(this, 'FNumber');
-                    const exposure = EXIF.getTag(this, 'ExposureTime');
-                    const takenDate = EXIF.getTag(this, 'DateTimeOriginal');
-                    const shootingTimeInput = document.getElementById('shooting_time');
-                    const cam = (model).trim() || 'Unknown Camera';
+                //     const make = EXIF.getTag(this, 'Make') || '';
+                //     const model = EXIF.getTag(this, 'Model') || '';
+                //     const lens = EXIF.getTag(this, 'LensModel') || 'Unknown Lens';
+                //     const focal = EXIF.getTag(this, 'FocalLength');
+                //     const iso = EXIF.getTag(this, 'ISOSpeedRatings');
+                //     const fnum = EXIF.getTag(this, 'FNumber');
+                //     const exposure = EXIF.getTag(this, 'ExposureTime');
+                //     const takenDate = EXIF.getTag(this, 'DateTimeOriginal');
+                //     const shootingTimeInput = document.getElementById('shooting_time');
+                //     const cam = (model).trim() || 'Unknown Camera';
 
-                    /* ---------- 更新框里面的文字 ---------- */
-                    cameramodelInput = document.getElementById('cameraModel');
-                    lensmodelInput = document.getElementById('lensModel');
-                    focallengthInput = document.getElementById('FocalLength');
-                    isoInput = document.getElementById('ISO');
-                    fInput = document.getElementById('F');
-                    shutterInput = document.getElementById('Shutter');
+                //     /* ---------- 更新框里面的文字 ---------- */
+                //     cameramodelInput = document.getElementById('cameraModel');
+                //     lensmodelInput = document.getElementById('lensModel');
+                //     focallengthInput = document.getElementById('FocalLength');
+                //     isoInput = document.getElementById('ISO');
+                //     fInput = document.getElementById('F');
+                //     shutterInput = document.getElementById('Shutter');
 
-                    if (model && cameramodelInput && !cameramodelInput.value) {
-                        cameramodelInput.value = model.trim();
-                    }
-                    if (lens && lensmodelInput && !lensmodelInput.value) {
-                        lensmodelInput.value = lens.trim();
-                    }
-                    if (focal && focallengthInput && !focallengthInput.value) {
-                        focallengthInput.value = (focal.numerator / focal.denominator).toFixed(0) + 'mm';
-                    }
-                    if (iso && isoInput && !isoInput.value) {
-                        isoInput.value = iso;
-                    }
-                    if (fnum && fInput && !fInput.value) {
-                        fInput.value = 'f/' + (fnum.numerator / fnum.denominator).toFixed(1);
-                    }
-                    if (exposure && shutterInput && !shutterInput.value) {
-                        shutterInput.value = exposure.numerator + '/' + exposure.denominator + 's';
-                    }
+                //     if (model && cameramodelInput && !cameramodelInput.value) {
+                //         cameramodelInput.value = model.trim();
+                //     }
+                //     if (lens && lensmodelInput && !lensmodelInput.value) {
+                //         lensmodelInput.value = lens.trim();
+                //     }
+                //     if (focal && focallengthInput && !focallengthInput.value) {
+                //         focallengthInput.value = (focal.numerator / focal.denominator).toFixed(0) + 'mm';
+                //     }
+                //     if (iso && isoInput && !isoInput.value) {
+                //         isoInput.value = iso;
+                //     }
+                //     if (fnum && fInput && !fInput.value) {
+                //         fInput.value = 'f/' + (fnum.numerator / fnum.denominator).toFixed(1);
+                //     }
+                //     if (exposure && shutterInput && !shutterInput.value) {
+                //         shutterInput.value = exposure.numerator + '/' + exposure.denominator + 's';
+                //     }
 
-                    if (takenDate && shootingTimeInput && !shootingTimeInput.value) {
-                        const parts = takenDate.split(' ');
-                        if (parts.length === 2) {
-                            const dateParts = parts[0].split(':');
-                            const timeParts = parts[1].split(':');
-                            if (dateParts.length === 3 && timeParts.length === 3) {
-                                const formattedDate = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}T${timeParts[0]}:${timeParts[1]}`;
-                                shootingTimeInput.value = formattedDate;
-                            }
-                        }
-                    }
+                //     if (takenDate && shootingTimeInput && !shootingTimeInput.value) {
+                //         const parts = takenDate.split(' ');
+                //         if (parts.length === 2) {
+                //             const dateParts = parts[0].split(':');
+                //             const timeParts = parts[1].split(':');
+                //             if (dateParts.length === 3 && timeParts.length === 3) {
+                //                 const formattedDate = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}T${timeParts[0]}:${timeParts[1]}`;
+                //                 shootingTimeInput.value = formattedDate;
+                //             }
+                //         }
+                //     }
 
 
-                    /* ---------- 更新框里面的文字结束 ---------- */
-                    //                 exifInfo.innerHTML = `
-                    //     <strong>Camera:</strong> ${cam}<br>
-                    //     <strong>Lens:</strong> ${lens}<br>
-                    //     <strong>Focal:</strong> ${focal ? focal + ' mm' : 'N/A'}　
-                    //     <strong>ISO:</strong> ${iso || 'N/A'}　
-                    //     <strong>F:</strong> ${fnum ? 'f/' + (fnum.numerator / fnum.denominator).toFixed(1) : 'N/A'}　
-                    //     <strong>Shutter:</strong> ${exposure ? exposure.numerator + '/' + exposure.denominator + 's' : 'N/A'}
-                    // `;
-                });
-                /* ---------- 读取 EXIF 结束 ---------- */
+                //     /* ---------- 更新框里面的文字结束 ---------- */
+                //     //                 exifInfo.innerHTML = `
+                //     //     <strong>Camera:</strong> ${cam}<br>
+                //     //     <strong>Lens:</strong> ${lens}<br>
+                //     //     <strong>Focal:</strong> ${focal ? focal + ' mm' : 'N/A'}　
+                //     //     <strong>ISO:</strong> ${iso || 'N/A'}　
+                //     //     <strong>F:</strong> ${fnum ? 'f/' + (fnum.numerator / fnum.denominator).toFixed(1) : 'N/A'}　
+                //     //     <strong>Shutter:</strong> ${exposure ? exposure.numerator + '/' + exposure.denominator + 's' : 'N/A'}
+                //     // `;
+                // });
+                // /* ---------- 读取 EXIF 结束 ---------- */
 
 
 
