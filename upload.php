@@ -244,10 +244,12 @@ function addWatermark(
                 break;
             case IMAGETYPE_GIF:
                 $image = imagecreatefromgif($sourcePath);
+                imagesavealpha($image, true);
                 break;
             default:
                 return ['status' => false, 'error' => '不支持的图片格式', 'watermark_size_used' => 0];
         }
+        imagealphablending($image, true);
     } catch (Exception $e) {
         error_log("创建图像资源失败: " . $e->getMessage());
         return ['status' => false, 'error' => '图片处理失败', 'watermark_size_used' => 0];
@@ -272,8 +274,11 @@ function addWatermark(
 
     $fontPath = null;
     $fontCandidates = [
+        __DIR__ . '/1755230823011393_dingliehuobanti.ttf',
         __DIR__ . '/fonts/arial.ttf',
         __DIR__ . '/fonts/msyh.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         'C:/Windows/Fonts/arial.ttf',
         'C:/Windows/Fonts/msyh.ttc'
     ];
