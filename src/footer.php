@@ -33,7 +33,7 @@
                 <div class="footer-links-container">
                     <h3 class="footer-title">帮助中心</h3>
                     <ul class="footer-links">
-                        <li><a href="#">使用指南</a></li>
+                        <li><a href="../OurRule.pdf">通过规则</a></li>
                         <li><a href="#">常见问题</a></li>
                         <li><a href="#">用户协议</a></li>
                         <li><a href="#">隐私政策</a></li>
