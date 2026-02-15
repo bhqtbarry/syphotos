@@ -15,7 +15,6 @@ if (!isset($_SESSION['user_id'])) {
 
 $error = '';
 $success = '';
-$max_upload_size = 45 * 1024 * 1024; // 45MB
 
 // 确保uploads目录可写
 $upload_dir = 'uploads/';
@@ -201,24 +200,63 @@ function compressImage($sourcePath, $destPath, &$compressedInfo, $maxSize = 5242
 }
 
 /**
- * 添加图片水印函数（使用up1.php同款文字水印：syphotos + @username）
+ * 添加图片水印函数（使用6.png作为水印）
  */
-function addWatermark(
-    $sourcePath,
-    $destPath,
-    $originalWidth,
-    $finalWidth,
-    $watermarkSize = 15,
-    $opacity = 80,
-    $position = 'bottom-right',
-    $xRatio = null,
-    $yRatio = null
-)
+function addWatermark($sourcePath, $destPath, $originalWidth, $finalWidth, $watermarkSize = 15, $opacity = 80, $position = 'bottom-right')
 {
-    error_log("开始添加文字水印 - 源路径: $sourcePath, 目标路径: $destPath, 大小: $watermarkSize%, 透明度: $opacity%, 位置: $position");
+    // 调试：记录水印处理参数
+    error_log("开始添加水印 - 源路径: $sourcePath, 目标路径: $destPath, 大小: $watermarkSize%, 透明度: $opacity%, 位置: $position");
 
-    $scale = $originalWidth > 0 ? ($finalWidth / $originalWidth) : 1;
+    // 计算缩放比例
+    $scale = $finalWidth / $originalWidth;
+    error_log("图片缩放比例: $scale (原始宽度: $originalWidth, 最终宽度: $finalWidth)");
 
+    // 水印图片路径 - 使用HTTPS绝对路径确保安全
+    $watermarkUrl = 'https://' . $_SERVER['HTTP_HOST'] . '/6.png'; // 使用当前域名的HTTPS路径
+    $watermarkPath = $_SERVER['DOCUMENT_ROOT'] . '/6.png'; // 服务器本地路径
+
+    // 检查水印图片是否存在
+    if (!file_exists($watermarkPath)) {
+        error_log("水印图片不存在于基础路径: " . $watermarkPath);
+        // 尝试其他可能的路径
+        $alternativePaths = [
+            $_SERVER['DOCUMENT_ROOT'] . '/uploads/6.png',
+            $_SERVER['DOCUMENT_ROOT'] . '/images/6.png',
+            __DIR__ . '/6.png',
+            __DIR__ . '/uploads/6.png'
+        ];
+
+        foreach ($alternativePaths as $altPath) {
+            if (file_exists($altPath)) {
+                $watermarkPath = $altPath;
+                $watermarkUrl = 'https://' . $_SERVER['HTTP_HOST'] . str_replace($_SERVER['DOCUMENT_ROOT'], '', $altPath);
+                error_log("在替代路径找到水印图片: $watermarkPath");
+                break;
+            }
+        }
+
+        if (!file_exists($watermarkPath)) {
+            error_log("所有路径均未找到水印图片6.png");
+            return ['status' => false, 'error' => '水印图片6.png未找到，请检查文件是否存在', 'watermark_size_used' => 0];
+        }
+    }
+
+    // 获取水印图片信息
+    $watermarkInfo = getimagesize($watermarkPath);
+    if (!$watermarkInfo) {
+        error_log("无法获取水印图片信息: " . $watermarkPath);
+        return ['status' => false, 'error' => '无法解析水印图片信息', 'watermark_size_used' => 0];
+    }
+    list($wmWidth, $wmHeight, $wmType) = $watermarkInfo;
+    error_log("水印原始尺寸: $wmWidth x $wmHeight, 类型: $wmType");
+
+    // 计算水印大小（按百分比计算，1-50）
+    $watermarkScale = $watermarkSize / 100;
+    $adjustedWidth = max(20, min(intval(round($finalWidth * $watermarkScale)), intval(round($finalWidth * 0.5))));
+    $adjustedHeight = intval(round($wmHeight * ($adjustedWidth / $wmWidth)));
+    error_log("水印调整后尺寸: $adjustedWidth x $adjustedHeight (基于原图的 $watermarkSize%)");
+
+    // 检查源文件
     if (!file_exists($sourcePath)) {
         error_log("源图片不存在: " . $sourcePath);
         return ['status' => false, 'error' => '源图片文件未找到', 'watermark_size_used' => 0];
@@ -233,6 +271,7 @@ function addWatermark(
     list($width, $height, $type) = $imageInfo;
     error_log("源图片尺寸: $width x $height, 类型: $type");
 
+    // 创建图像资源
     try {
         switch ($type) {
             case IMAGETYPE_JPEG:
@@ -253,121 +292,133 @@ function addWatermark(
         return ['status' => false, 'error' => '图片处理失败', 'watermark_size_used' => 0];
     }
 
-    $username = trim((string)($_SESSION['username'] ?? 'photographer'));
-    if ($username === '') {
-        $username = 'photographer';
-    }
-    $line1 = 'syphotos';
-    $line2 = '@' . $username;
-
-    $targetBlockWidth = max(20, min(intval(round($finalWidth * ($watermarkSize / 100))), intval(round($finalWidth * 0.5))));
-    $mainFontSize = max(10, (int)round($targetBlockWidth / 4.2));
-    $authorFontSize = max(8, (int)round($mainFontSize * 0.45));
-    $lineGap = max(2, (int)round($mainFontSize * 0.25));
-    $margin = 20;
-
-    $alpha = (int)max(0, min(127, round(127 * (100 - $opacity) / 100)));
-    $white = imagecolorallocatealpha($image, 255, 255, 255, $alpha);
-    $shadow = imagecolorallocatealpha($image, 0, 0, 0, min(127, $alpha + 30));
-
-    $fontPath = null;
-    $fontCandidates = [
-        __DIR__ . '/fonts/arial.ttf',
-        __DIR__ . '/fonts/msyh.ttf',
-        'C:/Windows/Fonts/arial.ttf',
-        'C:/Windows/Fonts/msyh.ttc'
-    ];
-    foreach ($fontCandidates as $candidate) {
-        if (file_exists($candidate) && is_readable($candidate)) {
-            $fontPath = $candidate;
-            break;
-        }
-    }
-
-    if ($fontPath && function_exists('imagettftext') && function_exists('imagettfbbox')) {
-        $bbox1 = imagettfbbox($mainFontSize, 0, $fontPath, $line1);
-        $bbox2 = imagettfbbox($authorFontSize, 0, $fontPath, $line2);
-        $line1Width = max(1, (int)abs($bbox1[2] - $bbox1[0]));
-        $line2Width = max(1, (int)abs($bbox2[2] - $bbox2[0]));
-        $line1Height = max(1, (int)abs($bbox1[7] - $bbox1[1]));
-        $line2Height = max(1, (int)abs($bbox2[7] - $bbox2[1]));
-    } else {
-        $line1Width = imagefontwidth(5) * strlen($line1);
-        $line2Width = imagefontwidth(3) * strlen($line2);
-        $line1Height = imagefontheight(5);
-        $line2Height = imagefontheight(3);
-    }
-
-    $adjustedWidth = max($line1Width, $line2Width);
-    $adjustedHeight = $line1Height + $lineGap + $line2Height;
-
-    $hasCustomRatio = is_numeric($xRatio) && is_numeric($yRatio);
-    if ($hasCustomRatio) {
-        $xRatio = max(0, min(1, (float)$xRatio));
-        $yRatio = max(0, min(1, (float)$yRatio));
-        $x = $xRatio * max(0, ($width - $adjustedWidth));
-        $y = $yRatio * max(0, ($height - $adjustedHeight));
-    } else {
-        switch ($position) {
-            case 'top-left':
-                $x = $margin;
-                $y = $margin;
+    // 创建水印图像资源，特别处理透明通道
+    try {
+        switch ($wmType) {
+            case IMAGETYPE_JPEG:
+                $watermark = imagecreatefromjpeg($watermarkPath);
                 break;
-            case 'top-center':
-                $x = ($width - $adjustedWidth) / 2;
-                $y = $margin;
+            case IMAGETYPE_PNG:
+                $watermark = imagecreatefrompng($watermarkPath);
+                imagesavealpha($watermark, true); // 保留PNG透明通道
                 break;
-            case 'top-right':
-                $x = $width - $adjustedWidth - $margin;
-                $y = $margin;
+            case IMAGETYPE_GIF:
+                $watermark = imagecreatefromgif($watermarkPath);
                 break;
-            case 'middle-left':
-                $x = $margin;
-                $y = ($height - $adjustedHeight) / 2;
-                break;
-            case 'middle-center':
-                $x = ($width - $adjustedWidth) / 2;
-                $y = ($height - $adjustedHeight) / 2;
-                break;
-            case 'middle-right':
-                $x = $width - $adjustedWidth - $margin;
-                $y = ($height - $adjustedHeight) / 2;
-                break;
-            case 'bottom-left':
-                $x = $margin;
-                $y = $height - $adjustedHeight - $margin;
-                break;
-            case 'bottom-center':
-                $x = ($width - $adjustedWidth) / 2;
-                $y = $height - $adjustedHeight - $margin;
-                break;
-            case 'bottom-right':
             default:
-                $x = $width - $adjustedWidth - $margin;
-                $y = $height - $adjustedHeight - $margin;
-                break;
+                return ['status' => false, 'error' => '不支持的水印图片格式', 'watermark_size_used' => 0];
         }
+    } catch (Exception $e) {
+        error_log("创建水印图像资源失败: " . $e->getMessage());
+        return ['status' => false, 'error' => '水印处理失败', 'watermark_size_used' => 0];
     }
 
-    $x = max(0, min((int)round($x), max(0, $width - $adjustedWidth)));
-    $y = max(0, min((int)round($y), max(0, $height - $adjustedHeight)));
+    // 调整水印大小，保持透明通道
+    $resizedWatermark = imagecreatetruecolor($adjustedWidth, $adjustedHeight);
 
-    if ($fontPath && function_exists('imagettftext')) {
-        $line1BaseY = $y + $line1Height;
-        $line2BaseY = $line1BaseY + $lineGap + $line2Height;
-
-        imagettftext($image, $mainFontSize, 0, $x + 1, $line1BaseY + 1, $shadow, $fontPath, $line1);
-        imagettftext($image, $mainFontSize, 0, $x, $line1BaseY, $white, $fontPath, $line1);
-        imagettftext($image, $authorFontSize, 0, $x + 1, $line2BaseY + 1, $shadow, $fontPath, $line2);
-        imagettftext($image, $authorFontSize, 0, $x, $line2BaseY, $white, $fontPath, $line2);
-    } else {
-        imagestring($image, 5, $x + 1, $y + 1, $line1, $shadow);
-        imagestring($image, 5, $x, $y, $line1, $white);
-        $line2Y = $y + $line1Height + $lineGap;
-        imagestring($image, 3, $x + 1, $line2Y + 1, $line2, $shadow);
-        imagestring($image, 3, $x, $line2Y, $line2, $white);
+    // 为调整后的水印设置透明背景
+    if ($wmType == IMAGETYPE_PNG || $wmType == IMAGETYPE_GIF) {
+        $transparent = imagecolorallocatealpha($resizedWatermark, 0, 0, 0, 127);
+        imagefill($resizedWatermark, 0, 0, $transparent);
+        imagesavealpha($resizedWatermark, true); // 关键：保留透明通道
     }
 
+    // 调整水印大小
+    $resizeSuccess = imagecopyresampled(
+        $resizedWatermark,
+        $watermark,
+        0,
+        0,
+        0,
+        0,
+        $adjustedWidth,
+        $adjustedHeight,
+        $wmWidth,
+        $wmHeight
+    );
+
+    if (!$resizeSuccess) {
+        error_log("水印大小调整失败");
+        imagedestroy($watermark);
+        imagedestroy($resizedWatermark);
+        return ['status' => false, 'error' => '水印大小调整失败', 'watermark_size_used' => 0];
+    }
+
+    imagedestroy($watermark);
+
+    // 设置水印透明度（0-100转0-127）
+    $alpha = (127 - round(127 * $opacity / 100));
+    imagefilter($resizedWatermark, IMG_FILTER_COLORIZE, 0, 0, 0, $alpha);
+
+    // 根据选择的位置计算水印坐标（确保与前端一致）
+    $margin = 20; // 边距
+    switch ($position) {
+        case 'top-left':
+            $x = $margin;
+            $y = $margin;
+            break;
+        case 'top-center':
+            $x = ($width - $adjustedWidth) / 2;
+            $y = $margin;
+            break;
+        case 'top-right':
+            $x = $width - $adjustedWidth - $margin;
+            $y = $margin;
+            break;
+        case 'middle-left':
+            $x = $margin;
+            $y = ($height - $adjustedHeight) / 2;
+            break;
+        case 'middle-center':
+            $x = ($width - $adjustedWidth) / 2;
+            $y = ($height - $adjustedHeight) / 2;
+            break;
+        case 'middle-right':
+            $x = $width - $adjustedWidth - $margin;
+            $y = ($height - $adjustedHeight) / 2;
+            break;
+        case 'bottom-left':
+            $x = $margin;
+            $y = $height - $adjustedHeight - $margin;
+            break;
+        case 'bottom-center':
+            $x = ($width - $adjustedWidth) / 2;
+            $y = $height - $adjustedHeight - $margin;
+            break;
+        case 'bottom-right': // 默认右下角
+        default:
+            $x = $width - $adjustedWidth - $margin;
+            $y = $height - $adjustedHeight - $margin;
+            break;
+    }
+
+    // 确保水印在图片范围内
+    $x = max(0, min(round($x), $width - $adjustedWidth));
+    $y = max(0, min(round($y), $height - $adjustedHeight));
+    error_log("水印位置坐标: x=$x, y=$y");
+
+    // 添加水印到图片
+    $watermarkAdded = imagecopy(
+        $image,
+        $resizedWatermark,
+        $x,
+        $y,
+        0,
+        0,
+        $adjustedWidth,
+        $adjustedHeight
+    );
+
+    if (!$watermarkAdded) {
+        error_log("添加水印到图片失败");
+        imagedestroy($image);
+        imagedestroy($resizedWatermark);
+        return ['status' => false, 'error' => '添加水印到图片失败', 'watermark_size_used' => 0];
+    }
+
+    imagedestroy($resizedWatermark);
+
+    // 保存图片
     $result = false;
     switch ($type) {
         case IMAGETYPE_JPEG:
@@ -388,7 +439,7 @@ function addWatermark(
         return ['status' => false, 'error' => '保存水印图片失败', 'watermark_size_used' => 0];
     }
 
-    error_log("文字水印添加成功，保存路径: $destPath");
+    error_log("水印添加成功，保存路径: $destPath");
 
     return [
         'status' => true,
@@ -402,22 +453,14 @@ function addWatermark(
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
-        if (($_FILES['photo']['size'] ?? 0) > $max_upload_size) {
-            $error = '文件过大，最大允许上传 45MB';
-        }
-
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
         $file_type = $_FILES['photo']['type'];
 
-        if (empty($error) && !in_array($file_type, $allowed_types)) {
+        if (!in_array($file_type, $allowed_types)) {
             $error = '不支持的文件类型，仅支持JPEG、PNG和GIF';
-        }
-
-        if (empty($error) && !isset($_POST['allow_use'])) {
+        } elseif (!isset($_POST['allow_use'])) {
             $error = '请同意平台使用条款才能上传图片';
-        }
-
-        if (empty($error)) {
+        } else {
             // 水印参数处理
             $watermarkSize = max(5, min(50, intval($_POST['watermark_size'] ?? 15))); // 5-50%
             $watermarkOpacity = max(10, min(100, intval($_POST['watermark_opacity'] ?? 80)));
@@ -436,14 +479,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                 ]
             )
                 ? $_POST['watermark_position'] : 'bottom-right';
-            $watermarkXRatio = null;
-            $watermarkYRatio = null;
-            if (isset($_POST['watermark_x_ratio']) && is_numeric($_POST['watermark_x_ratio'])) {
-                $watermarkXRatio = max(0, min(1, (float)$_POST['watermark_x_ratio']));
-            }
-            if (isset($_POST['watermark_y_ratio']) && is_numeric($_POST['watermark_y_ratio'])) {
-                $watermarkYRatio = max(0, min(1, (float)$_POST['watermark_y_ratio']));
-            }
 
             $filename = uniqid() . '_' . basename($_FILES['photo']['name']);
             $target_path = $upload_dir . $filename;
@@ -472,9 +507,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                     $compressResult['final_width'],
                     $watermarkSize,
                     $watermarkOpacity,
-                    $watermarkPosition,
-                    $watermarkXRatio,
-                    $watermarkYRatio
+                    $watermarkPosition
                 );
 
                 if (!$watermarkResult['status']) {
@@ -555,9 +588,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
 
                         // Aperture
                         if ($aperture_value === null) {
-                            $stmt->bindValue(':F', null, PDO::PARAM_NULL);
+                            $stmt->bindValue(':Aperture', null, PDO::PARAM_NULL);
                         } else {
-                            $stmt->bindValue(':F', $aperture_value);
+                            $stmt->bindValue(':Aperture', $aperture_value);
                         }
 
                         $stmt->execute([
@@ -1130,119 +1163,6 @@ function debounce($func, $wait = 500)
             font-size: 12px;
             color: var(--gray-400);
         }
-
-        .drag-tool-layout {
-            display: grid;
-            grid-template-columns: 1.2fr 0.8fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .drag-preview-column,
-        .drag-controls-column {
-            min-width: 0;
-        }
-
-        .drag-preview {
-            display: none;
-            margin-top: 14px;
-        }
-
-        .image-container-wrapper {
-            position: relative;
-            width: 100%;
-            min-height: 320px;
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--gray-200);
-            background: #f7f8fb;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .image-container {
-            position: relative;
-            max-width: 100%;
-            max-height: 100%;
-        }
-
-        #watermarkElement {
-            position: absolute;
-            left: 20px;
-            top: 20px;
-            z-index: 5;
-            cursor: move;
-            user-select: none;
-            border: 2px dashed transparent;
-            padding: 0;
-            line-height: 1.2;
-            text-align: left;
-            white-space: nowrap;
-        }
-
-        #watermarkElement.dragging,
-        #watermarkElement:hover {
-            border-color: rgba(22, 93, 255, 0.55);
-        }
-
-        .watermark-text {
-            color: #fff;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
-        }
-
-        .watermark-syphotos {
-            font-size: 42px;
-            font-weight: 800;
-            letter-spacing: 1px;
-        }
-
-        .watermark-author {
-            font-size: 18px;
-            font-weight: 500;
-            opacity: 0.95;
-        }
-
-        .drag-hint {
-            margin-top: 8px;
-            font-size: 12px;
-            color: var(--gray-500);
-        }
-
-        .quick-position-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 14px;
-        }
-
-        .quick-position-btn {
-            border: 1px solid var(--gray-200);
-            background: #fff;
-            border-radius: var(--radius-lg);
-            padding: 8px 6px;
-            font-size: 12px;
-            cursor: pointer;
-            color: var(--gray-500);
-            transition: var(--transition);
-        }
-
-        .quick-position-btn:hover,
-        .quick-position-btn.active {
-            border-color: var(--primary);
-            color: var(--primary);
-            background-color: rgba(22, 93, 255, 0.06);
-        }
-
-        .hidden-position-radios {
-            display: none;
-        }
-
-        @media (max-width: 980px) {
-            .drag-tool-layout {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 
@@ -1282,128 +1202,38 @@ function debounce($func, $wait = 500)
             <div class="upload-form">
 
                 <div class="form-group full-width">
-                    <div class="drag-tool-layout">
-                        <div class="drag-preview-column">
-                            <label for="photo">
-                                <i class="fas fa-image"></i>
-                                选择图片 <span style="color:var(--danger)">*</span>
-                            </label>
-                            <div class="image-upload" id="imageUploadArea">
-                                <div class="upload-icon">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                </div>
-                                <div>点击或拖拽图片到此处上传</div>
-                                <div class="form-hint">支持 JPG、PNG、GIF 格式；最大 45MB，超过5MB将自动压缩</div>
-                                <input type="file" id="photo" name="photo" accept="image/*" required>
-                            </div>
+                    <label for="photo">
+                        <i class="fas fa-image"></i>
+                        选择图片 <span style="color:var(--danger)">*</span>
+                    </label>
+                    <div class="image-upload" id="imageUploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
 
-                            <div class="image-preview drag-preview" id="imagePreview">
-                                <div class="image-container-wrapper">
-                                    <div class="image-container" id="imageContainer">
-                                        <img id="previewImage" class="preview-image" src="" alt="图片预览">
-                                        <div id="watermarkElement">
-                                            <div class="watermark-text watermark-syphotos">syphotos</div>
-                                            <div class="watermark-text watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="drag-hint">
-                                    <i class="fas fa-hand-pointer"></i> 提示：可直接拖动水印，水印会限制在图片范围内
-                                </div>
-                                <div class="processing-info" id="processingInfo">
-                                    原始尺寸: <span id="originalDimensions">-- x --</span> |
-                                    处理后尺寸: <span id="processedDimensions">-- x --</span>
-                                </div>
-                                <div class="preview-info" id="previewInfo">
-                                    水印大小: <span id="displayedWatermarkSize">15%</span> |
-                                    位置: <span id="displayedWatermarkPosition">右下角</span>
-                                </div>
-                                <div style="margin-top:10px; text-align:right;">
-                                    <button type="button" class="btn btn-secondary" id="removePreview">
-                                        <i class="fas fa-times"></i> 移除图片
-                                    </button>
-                                </div>
-                            </div>
                         </div>
+                        <div>点击或拖拽图片到此处上传</div>
+                        <div class="form-hint">支持 JPG、PNG、GIF 格式，超过5MB将自动压缩</div>
+                        <input type="file" id="photo" name="photo" accept="image/*" required>
+                    </div>
 
-                        <div class="drag-controls-column">
-                            <div class="watermark-settings form-group full-width">
-                                <h3>
-                                    <i class="fas fa-images"></i>
-                                    图片水印设置
-                                </h3>
-                                <div class="slider-group">
-                                    <label for="watermark_size">水印大小（占原图比例）</label>
-                                    <div class="slider-container">
-                                        <input type="range" id="watermark_size" name="watermark_size"
-                                            min="5" max="50" step="1" value="<?php echo isset($_POST['watermark_size']) ? intval($_POST['watermark_size']) : 15; ?>">
-                                        <span class="slider-value" id="watermark_size_value">
-                                            <?php echo isset($_POST['watermark_size']) ? intval($_POST['watermark_size']) : 15; ?>%
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="slider-group">
-                                    <label for="watermark_opacity">水印透明度</label>
-                                    <div class="slider-container">
-                                        <input type="range" id="watermark_opacity" name="watermark_opacity"
-                                            min="10" max="100" step="5" value="<?php echo isset($_POST['watermark_opacity']) ? intval($_POST['watermark_opacity']) : 80; ?>">
-                                        <span class="slider-value" id="watermark_opacity_value">
-                                            <?php echo isset($_POST['watermark_opacity']) ? intval($_POST['watermark_opacity']) : 80; ?>%
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="quick-position-grid">
-                                    <button type="button" class="quick-position-btn" data-position="top-left">左上</button>
-                                    <button type="button" class="quick-position-btn" data-position="top-center">上中</button>
-                                    <button type="button" class="quick-position-btn" data-position="top-right">右上</button>
-                                    <button type="button" class="quick-position-btn" data-position="middle-left">左中</button>
-                                    <button type="button" class="quick-position-btn" data-position="middle-center">居中</button>
-                                    <button type="button" class="quick-position-btn" data-position="middle-right">右中</button>
-                                    <button type="button" class="quick-position-btn" data-position="bottom-left">左下</button>
-                                    <button type="button" class="quick-position-btn" data-position="bottom-center">下中</button>
-                                    <button type="button" class="quick-position-btn active" data-position="bottom-right">右下</button>
-                                </div>
-                                <div class="position-selector hidden-position-radios">
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-left' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="top-left" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-left' ? 'checked' : ''; ?>>
-                                        <span>左上角</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-center' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="top-center" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-center' ? 'checked' : ''; ?>>
-                                        <span>上中</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-right' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="top-right" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-right' ? 'checked' : ''; ?>>
-                                        <span>右上角</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-left' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="middle-left" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-left' ? 'checked' : ''; ?>>
-                                        <span>左中</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-center' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="middle-center" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-center' ? 'checked' : ''; ?>>
-                                        <span>居中</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-right' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="middle-right" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-right' ? 'checked' : ''; ?>>
-                                        <span>右中</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-left' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="bottom-left" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-left' ? 'checked' : ''; ?>>
-                                        <span>左下角</span>
-                                    </label>
-                                    <label class="position-option <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-center' ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="bottom-center" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-center' ? 'checked' : ''; ?>>
-                                        <span>下中</span>
-                                    </label>
-                                    <label class="position-option <?php echo (!isset($_POST['watermark_position']) || $_POST['watermark_position'] == 'bottom-right') ? 'selected' : ''; ?>">
-                                        <input type="radio" name="watermark_position" value="bottom-right" <?php echo (!isset($_POST['watermark_position']) || $_POST['watermark_position'] == 'bottom-right') ? 'checked' : ''; ?>>
-                                        <span>右下角</span>
-                                    </label>
-                                </div>
-                                <input type="hidden" id="watermark_x_ratio" name="watermark_x_ratio" value="<?php echo isset($_POST['watermark_x_ratio']) ? htmlspecialchars($_POST['watermark_x_ratio']) : ''; ?>">
-                                <input type="hidden" id="watermark_y_ratio" name="watermark_y_ratio" value="<?php echo isset($_POST['watermark_y_ratio']) ? htmlspecialchars($_POST['watermark_y_ratio']) : ''; ?>">
-                            </div>
+                    <!-- 带水印的预览区域 -->
+                    <div class="image-preview" id="imagePreview">
+                        <div class="preview-wrapper">
+                            <img id="previewImage" class="preview-image" src="" alt="图片预览">
+                            <img id="previewWatermark" class="preview-watermark" src="" alt="水印预览">
+                        </div>
+                        <div class="processing-info" id="processingInfo">
+                            原始尺寸: <span id="originalDimensions">-- x --</span> |
+                            处理后尺寸: <span id="processedDimensions">-- x --</span>
+                        </div>
+                        <div class="preview-info" id="previewInfo">
+                            水印大小: <span id="displayedWatermarkSize">15%</span> |
+                            位置: <span id="displayedWatermarkPosition">左上角</span>
+                        </div>
+                        <div style="margin-top:10px; text-align:right;">
+                            <button type="button" class="btn btn-secondary" id="removePreview">
+                                <i class="fas fa-times"></i> 移除图片
+                            </button>
                         </div>
                     </div>
                     <div class="form-grid">
@@ -1545,22 +1375,96 @@ function debounce($func, $wait = 500)
                     </div>
 
 
+                    <!-- 水印设置 -->
+                    <div class="watermark-settings form-group full-width">
+                        <h3>
+                            <i class="fas fa-images"></i>
+                            图片水印设置
+                        </h3>
+
+                        <div class="form-grid">
+                            <div class="slider-group">
+                                <label for="watermark_size">水印大小（占原图比例）</label>
+                                <div class="slider-container">
+                                    <input type="range" id="watermark_size" name="watermark_size"
+                                        min="5" max="50" step="1" value="<?php echo isset($_POST['watermark_size']) ? intval($_POST['watermark_size']) : 15; ?>">
+                                    <span class="slider-value" id="watermark_size_value">
+                                        <?php echo isset($_POST['watermark_size']) ? intval($_POST['watermark_size']) : 15; ?>%
+                                    </span>
+                                </div>
+                                <span class="form-hint">调整水印图片的大小（原图的5-50%）</span>
+                            </div>
+
+                            <div class="slider-group">
+                                <label for="watermark_opacity">水印透明度</label>
+                                <div class="slider-container">
+                                    <input type="range" id="watermark_opacity" name="watermark_opacity"
+                                        min="10" max="100" step="5" value="<?php echo isset($_POST['watermark_opacity']) ? intval($_POST['watermark_opacity']) : 80; ?>">
+                                    <span class="slider-value" id="watermark_opacity_value">
+                                        <?php echo isset($_POST['watermark_opacity']) ? intval($_POST['watermark_opacity']) : 80; ?>%
+                                    </span>
+                                </div>
+                                <span class="form-hint">调整水印的透明度（10-100%）</span>
+                            </div>
+                        </div>
+
+                        <!-- 水印位置选择 -->
+                        <div class="position-selector">
+                            <label>水印位置</label>
+                            <div class="position-grid">
+                                <label class="position-option position-top-left <?php echo (!isset($_POST['watermark_position']) || $_POST['watermark_position'] == 'top-left') ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="top-left" <?php echo (!isset($_POST['watermark_position']) || $_POST['watermark_position'] == 'top-left') ? 'checked' : ''; ?>>
+                                    <span>左上角</span>
+                                </label>
+                                <label class="position-option position-top-center <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-center' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="top-center" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-center' ? 'checked' : ''; ?>>
+                                    <span>上中</span>
+                                </label>
+                                <label class="position-option position-top-right <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-right' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="top-right" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'top-right' ? 'checked' : ''; ?>>
+                                    <span>右上角</span>
+                                </label>
+
+                                <label class="position-option position-middle-left <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-left' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="middle-left" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-left' ? 'checked' : ''; ?>>
+                                    <span>左中</span>
+                                </label>
+                                <label class="position-option position-middle-center <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-center' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="middle-center" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-center' ? 'checked' : ''; ?>>
+                                    <span>居中</span>
+                                </label>
+                                <label class="position-option position-middle-right <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-right' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="middle-right" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'middle-right' ? 'checked' : ''; ?>>
+                                    <span>右中</span>
+                                </label>
+
+                                <label class="position-option position-bottom-left <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-left' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="bottom-left" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-left' ? 'checked' : ''; ?>>
+                                    <span>左下角</span>
+                                </label>
+                                <label class="position-option position-bottom-center <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-center' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="bottom-center" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-center' ? 'checked' : ''; ?>>
+                                    <span>下中</span>
+                                </label>
+                                <label class="position-option position-bottom-right <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-right' ? 'selected' : ''; ?>">
+                                    <input type="radio" name="watermark_position" value="bottom-right" <?php echo isset($_POST['watermark_position']) && $_POST['watermark_position'] == 'bottom-right' ? 'checked' : ''; ?>>
+                                    <span>右下角</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+
                     <div class="checkbox-group">
                         <input type="checkbox" id="allow_use" name="allow_use" value="1"
                             <?php echo isset($_POST['allow_use']) ? 'checked' : ''; ?>>
                         <div>
                             <p><strong>允许平台在不另行通知的情况下使用此图片</strong></p>
                             <small>用途包括但不限于：网站首页展示、专题合集、社交媒体宣传等（将保留图片作者信息）。不同意此条款将无法完成上传。</small>
-                                                    </div>
+                        </div>
                     </div>
                 </div>
-            
-                <div class="rules-info">
-                    <h3>
-                        <i class="fas fa-info-circle"></i>
-                        <a href="OurRule.pdf" target="_blank" style="color: var(--primary);">上传规则和要求</a>
-                    </h3>
-                
 
                 <div class="form-actions">
                     <button type="submit" class="btn">
@@ -1581,41 +1485,26 @@ function debounce($func, $wait = 500)
             };
         }
 
-        // 水印预览控制（up1 风格：可拖动文字水印）
+        // 水印预览控制
         const sizeSlider = document.getElementById('watermark_size');
         const sizeValue = document.getElementById('watermark_size_value');
         const opacitySlider = document.getElementById('watermark_opacity');
         const opacityValue = document.getElementById('watermark_opacity_value');
         const positionRadios = document.querySelectorAll('input[name="watermark_position"]');
-        const quickPositionButtons = document.querySelectorAll('.quick-position-btn');
+        const previewWatermark = document.getElementById('previewWatermark');
         const previewImage = document.getElementById('previewImage');
         const displayedWatermarkSize = document.getElementById('displayedWatermarkSize');
         const displayedWatermarkPosition = document.getElementById('displayedWatermarkPosition');
-        const watermarkElement = document.getElementById('watermarkElement');
-        const imageContainer = document.getElementById('imageContainer');
-        const watermarkTitle = document.querySelector('.watermark-syphotos');
-        const watermarkAuthor = document.querySelector('.watermark-author');
-        const maxUploadSize = 45 * 1024 * 1024;
-        const watermarkXRatioInput = document.getElementById('watermark_x_ratio');
-        const watermarkYRatioInput = document.getElementById('watermark_y_ratio');
 
         let originalImageWidth = 0;
         let originalImageHeight = 0;
         let originalFileSize = 0;
+        let originalWatermarkWidth = 0;
+        let originalWatermarkHeight = 0;
         let predictedWidth = 0;
         let predictedHeight = 0;
         let scaleRatio = 1.0;
-        let isDragging = false;
-        let startX = 0;
-        let startY = 0;
-        let initialLeft = 0;
-        let initialTop = 0;
-        let imageBounds = {
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0
-        };
+        let watermarkUrl = 'https://' + window.location.hostname + '/6.png'; // 使用当前域名的HTTPS路径
 
         const positionTextMap = {
             'top-left': '左上角',
@@ -1652,32 +1541,29 @@ function debounce($func, $wait = 500)
             };
         }
 
+        function loadWatermarkDimensions() {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = function() {
+                originalWatermarkWidth = this.width;
+                originalWatermarkHeight = this.height;
+                updatePreviewWatermark(sizeSlider.value, opacitySlider.value, getSelectedPosition());
+            };
+            img.onerror = function() {
+                console.error("无法加载水印图片，请检查6.png是否存在");
+                alert("水印预览图片加载失败，请确保6.png文件存在");
+            };
+            img.src = watermarkUrl + '?' + new Date().getTime();
+            previewWatermark.src = watermarkUrl;
+        }
+
         function getSelectedPosition() {
             for (const radio of positionRadios) {
                 if (radio.checked) {
                     return radio.value;
                 }
             }
-            return 'bottom-right';
-        }
-
-        function setSelectedPosition(position) {
-            positionRadios.forEach((radio) => {
-                radio.checked = radio.value === position;
-            });
-            quickPositionButtons.forEach((btn) => {
-                btn.classList.toggle('active', btn.dataset.position === position);
-            });
-            displayedWatermarkPosition.textContent = positionTextMap[position] || position;
-        }
-
-        function updateImageBounds() {
-            const containerRect = imageContainer.getBoundingClientRect();
-            const imgRect = previewImage.getBoundingClientRect();
-            imageBounds.left = imgRect.left - containerRect.left;
-            imageBounds.top = imgRect.top - containerRect.top;
-            imageBounds.right = imageBounds.left + imgRect.width;
-            imageBounds.bottom = imageBounds.top + imgRect.height;
+            return 'top-left';
         }
 
         function updateWatermarkSettings() {
@@ -1688,123 +1574,101 @@ function debounce($func, $wait = 500)
             sizeValue.textContent = `${size}%`;
             opacityValue.textContent = `${opacity}%`;
             displayedWatermarkSize.textContent = `${size}%`;
-            setSelectedPosition(position);
+            displayedWatermarkPosition.textContent = positionTextMap[position] || position;
 
-            const mainSize = Math.max(24, Math.round(18 + size * 1.1));
-            const authorSize = Math.max(12, Math.round(mainSize * 0.45));
-            watermarkTitle.style.fontSize = `${mainSize}px`;
-            watermarkAuthor.style.fontSize = `${authorSize}px`;
-            watermarkElement.style.opacity = opacity / 100;
-            setWatermarkToPosition(position);
+            document.querySelectorAll('.position-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            document.querySelector(`.position-option:has(input[value="${position}"])`)?.classList.add('selected');
+
+            updatePreviewWatermark(size, opacity, position);
         }
 
-        function setWatermarkToPosition(position) {
-            if (!previewImage.src) return;
-            updateImageBounds();
-            const wmRect = watermarkElement.getBoundingClientRect();
-            const wmWidth = wmRect.width;
-            const wmHeight = wmRect.height;
-            const margin = 20;
-            let x = 0;
-            let y = 0;
+        function updatePreviewWatermark(size, opacity, position) {
+            if (previewWatermark && originalImageWidth > 0 && originalWatermarkWidth > 0 && predictedWidth > 0) {
+                const watermarkScale = size / 100;
+                let adjustedWidth = Math.round(predictedWidth * watermarkScale);
+                adjustedWidth = Math.max(20, Math.min(adjustedWidth, Math.round(predictedWidth * 0.5)));
+                const adjustedHeight = Math.round(originalWatermarkHeight * (adjustedWidth / originalWatermarkWidth));
 
-            switch (position) {
-                case 'top-left':
-                    x = imageBounds.left + margin;
-                    y = imageBounds.top + margin;
-                    break;
-                case 'top-center':
-                    x = imageBounds.left + (imageBounds.right - imageBounds.left - wmWidth) / 2;
-                    y = imageBounds.top + margin;
-                    break;
-                case 'top-right':
-                    x = imageBounds.right - wmWidth - margin;
-                    y = imageBounds.top + margin;
-                    break;
-                case 'middle-left':
-                    x = imageBounds.left + margin;
-                    y = imageBounds.top + (imageBounds.bottom - imageBounds.top - wmHeight) / 2;
-                    break;
-                case 'middle-center':
-                    x = imageBounds.left + (imageBounds.right - imageBounds.left - wmWidth) / 2;
-                    y = imageBounds.top + (imageBounds.bottom - imageBounds.top - wmHeight) / 2;
-                    break;
-                case 'middle-right':
-                    x = imageBounds.right - wmWidth - margin;
-                    y = imageBounds.top + (imageBounds.bottom - imageBounds.top - wmHeight) / 2;
-                    break;
-                case 'bottom-left':
-                    x = imageBounds.left + margin;
-                    y = imageBounds.bottom - wmHeight - margin;
-                    break;
-                case 'bottom-center':
-                    x = imageBounds.left + (imageBounds.right - imageBounds.left - wmWidth) / 2;
-                    y = imageBounds.bottom - wmHeight - margin;
-                    break;
-                case 'bottom-right':
-                default:
-                    x = imageBounds.right - wmWidth - margin;
-                    y = imageBounds.bottom - wmHeight - margin;
-                    break;
+                previewWatermark.style.width = `${adjustedWidth}px`;
+                previewWatermark.style.height = `${adjustedHeight}px`;
+                previewWatermark.style.opacity = opacity / 100;
+
+                const margin = 20;
+                previewWatermark.style.left = 'auto';
+                previewWatermark.style.right = 'auto';
+                previewWatermark.style.top = 'auto';
+                previewWatermark.style.bottom = 'auto';
+                previewWatermark.style.transform = 'none';
+
+                let x, y;
+                switch (position) {
+                    case 'top-left':
+                        x = margin;
+                        y = margin;
+                        break;
+                    case 'top-center':
+                        x = (predictedWidth - adjustedWidth) / 2;
+                        y = margin;
+                        previewWatermark.style.transform = 'translateX(-50%)';
+                        break;
+                    case 'top-right':
+                        x = predictedWidth - adjustedWidth - margin;
+                        y = margin;
+                        break;
+                    case 'middle-left':
+                        x = margin;
+                        y = (predictedHeight - adjustedHeight) / 2;
+                        previewWatermark.style.transform = 'translateY(-50%)';
+                        break;
+                    case 'middle-center':
+                        x = (predictedWidth - adjustedWidth) / 2;
+                        y = (predictedHeight - adjustedHeight) / 2;
+                        previewWatermark.style.transform = 'translate(-50%, -50%)';
+                        break;
+                    case 'middle-right':
+                        x = predictedWidth - adjustedWidth - margin;
+                        y = (predictedHeight - adjustedHeight) / 2;
+                        previewWatermark.style.transform = 'translateY(-50%)';
+                        break;
+                    case 'bottom-left':
+                        x = margin;
+                        y = predictedHeight - adjustedHeight - margin;
+                        break;
+                    case 'bottom-center':
+                        x = (predictedWidth - adjustedWidth) / 2;
+                        y = predictedHeight - adjustedHeight - margin;
+                        previewWatermark.style.transform = 'translateX(-50%)';
+                        break;
+                    case 'bottom-right':
+                    default:
+                        x = predictedWidth - adjustedWidth - margin;
+                        y = predictedHeight - adjustedHeight - margin;
+                        break;
+                }
+
+                x = Math.round(x);
+                y = Math.round(y);
+                x = Math.max(0, Math.min(x, predictedWidth - adjustedWidth));
+                y = Math.max(0, Math.min(y, predictedHeight - adjustedHeight));
+
+                if (position.includes('center')) {
+                    previewWatermark.style.left = `${x}px`;
+                } else if (position.includes('right')) {
+                    previewWatermark.style.right = `${predictedWidth - x - adjustedWidth}px`;
+                } else {
+                    previewWatermark.style.left = `${x}px`;
+                }
+
+                if (position.includes('middle')) {
+                    previewWatermark.style.top = `${y}px`;
+                } else if (position.includes('bottom')) {
+                    previewWatermark.style.bottom = `${predictedHeight - y - adjustedHeight}px`;
+                } else {
+                    previewWatermark.style.top = `${y}px`;
+                }
             }
-
-            watermarkElement.style.left = `${Math.round(x)}px`;
-            watermarkElement.style.top = `${Math.round(y)}px`;
-            constrainWatermarkToImage();
-        }
-
-        function constrainWatermarkToImage() {
-            if (!previewImage.src) return;
-            updateImageBounds();
-            const wmRect = watermarkElement.getBoundingClientRect();
-            const wmWidth = wmRect.width;
-            const wmHeight = wmRect.height;
-            let x = parseFloat(watermarkElement.style.left) || 0;
-            let y = parseFloat(watermarkElement.style.top) || 0;
-
-            const minX = imageBounds.left;
-            const maxX = imageBounds.right - wmWidth;
-            const minY = imageBounds.top;
-            const maxY = imageBounds.bottom - wmHeight;
-
-            x = Math.max(minX, Math.min(x, maxX));
-            y = Math.max(minY, Math.min(y, maxY));
-            watermarkElement.style.left = `${Math.round(x)}px`;
-            watermarkElement.style.top = `${Math.round(y)}px`;
-            updateWatermarkRatioInputs();
-        }
-
-        function updateWatermarkRatioInputs() {
-            if (!previewImage.src) return;
-            updateImageBounds();
-            const wmRect = watermarkElement.getBoundingClientRect();
-            const wmWidth = wmRect.width;
-            const wmHeight = wmRect.height;
-            const x = parseFloat(watermarkElement.style.left) || imageBounds.left;
-            const y = parseFloat(watermarkElement.style.top) || imageBounds.top;
-            const usableWidth = Math.max(1, imageBounds.right - imageBounds.left - wmWidth);
-            const usableHeight = Math.max(1, imageBounds.bottom - imageBounds.top - wmHeight);
-            const xRatio = (x - imageBounds.left) / usableWidth;
-            const yRatio = (y - imageBounds.top) / usableHeight;
-            watermarkXRatioInput.value = Math.max(0, Math.min(1, xRatio)).toFixed(6);
-            watermarkYRatioInput.value = Math.max(0, Math.min(1, yRatio)).toFixed(6);
-        }
-
-        function detectNearestPosition() {
-            updateImageBounds();
-            const wmRect = watermarkElement.getBoundingClientRect();
-            const wmWidth = wmRect.width;
-            const wmHeight = wmRect.height;
-            const x = parseFloat(watermarkElement.style.left) || imageBounds.left;
-            const y = parseFloat(watermarkElement.style.top) || imageBounds.top;
-
-            const usableWidth = Math.max(1, imageBounds.right - imageBounds.left - wmWidth);
-            const usableHeight = Math.max(1, imageBounds.bottom - imageBounds.top - wmHeight);
-            const xRatio = (x - imageBounds.left) / usableWidth;
-            const yRatio = (y - imageBounds.top) / usableHeight;
-            const col = xRatio < 0.33 ? 'left' : (xRatio > 0.66 ? 'right' : 'center');
-            const row = yRatio < 0.33 ? 'top' : (yRatio > 0.66 ? 'bottom' : 'middle');
-            return `${row}-${col}`;
         }
 
         // 图片预览功能
@@ -1814,7 +1678,16 @@ function debounce($func, $wait = 500)
             if (!this.files || !this.files[0]) return;
 
             const file = this.files[0];
-            // 调用 exif-service 自动填充
+
+            // ===== 1️⃣ 先显示预览（你已有的话可跳过） =====
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // ===== 2️⃣ 调用 exif-service =====
             const formData = new FormData();
             formData.append('file', file); // ⚠️ 名字必须是 file
 
@@ -1825,7 +1698,7 @@ function debounce($func, $wait = 500)
                 });
 
                 const respose = await resp.json();
-                const data = respose[0];
+                data = respose[0];
 
                 if (data.error) {
                     console.warn('EXIF 识别失败:', data.error);
@@ -1886,12 +1759,82 @@ function debounce($func, $wait = 500)
             if (files && files[0]) {
                 const reader = new FileReader();
                 const file = files[0];
-                if (file.size > maxUploadSize) {
-                    alert('文件过大，最大允许上传 45MB');
-                    photoInput.value = '';
-                    return;
-                }
                 originalFileSize = file.size;
+
+                /* ---------- 读取 EXIF ---------- */
+                // const exifInfo = document.getElementById('exifInfo');
+
+                // EXIF.getData(file, function() {
+                //     if (!exifInfo) return;
+
+                //     const make = EXIF.getTag(this, 'Make') || '';
+                //     const model = EXIF.getTag(this, 'Model') || '';
+                //     const lens = EXIF.getTag(this, 'LensModel') || 'Unknown Lens';
+                //     const focal = EXIF.getTag(this, 'FocalLength');
+                //     const iso = EXIF.getTag(this, 'ISOSpeedRatings');
+                //     const fnum = EXIF.getTag(this, 'FNumber');
+                //     const exposure = EXIF.getTag(this, 'ExposureTime');
+                //     const takenDate = EXIF.getTag(this, 'DateTimeOriginal');
+                //     const shootingTimeInput = document.getElementById('shooting_time');
+                //     const cam = (model).trim() || 'Unknown Camera';
+
+                //     /* ---------- 更新框里面的文字 ---------- */
+                //     cameramodelInput = document.getElementById('cameraModel');
+                //     lensmodelInput = document.getElementById('lensModel');
+                //     focallengthInput = document.getElementById('FocalLength');
+                //     isoInput = document.getElementById('ISO');
+                //     fInput = document.getElementById('F');
+                //     shutterInput = document.getElementById('Shutter');
+
+                //     if (model && cameramodelInput && !cameramodelInput.value) {
+                //         cameramodelInput.value = model.trim();
+                //     }
+                //     if (lens && lensmodelInput && !lensmodelInput.value) {
+                //         lensmodelInput.value = lens.trim();
+                //     }
+                //     if (focal && focallengthInput && !focallengthInput.value) {
+                //         focallengthInput.value = (focal.numerator / focal.denominator).toFixed(0) + 'mm';
+                //     }
+                //     if (iso && isoInput && !isoInput.value) {
+                //         isoInput.value = iso;
+                //     }
+                //     if (fnum && fInput && !fInput.value) {
+                //         fInput.value = 'f/' + (fnum.numerator / fnum.denominator).toFixed(1);
+                //     }
+                //     if (exposure && shutterInput && !shutterInput.value) {
+                //         shutterInput.value = exposure.numerator + '/' + exposure.denominator + 's';
+                //     }
+
+                //     if (takenDate && shootingTimeInput && !shootingTimeInput.value) {
+                //         const parts = takenDate.split(' ');
+                //         if (parts.length === 2) {
+                //             const dateParts = parts[0].split(':');
+                //             const timeParts = parts[1].split(':');
+                //             if (dateParts.length === 3 && timeParts.length === 3) {
+                //                 const formattedDate = `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}T${timeParts[0]}:${timeParts[1]}`;
+                //                 shootingTimeInput.value = formattedDate;
+                //             }
+                //         }
+                //     }
+
+
+                //     /* ---------- 更新框里面的文字结束 ---------- */
+                //     //                 exifInfo.innerHTML = `
+                //     //     <strong>Camera:</strong> ${cam}<br>
+                //     //     <strong>Lens:</strong> ${lens}<br>
+                //     //     <strong>Focal:</strong> ${focal ? focal + ' mm' : 'N/A'}　
+                //     //     <strong>ISO:</strong> ${iso || 'N/A'}　
+                //     //     <strong>F:</strong> ${fnum ? 'f/' + (fnum.numerator / fnum.denominator).toFixed(1) : 'N/A'}　
+                //     //     <strong>Shutter:</strong> ${exposure ? exposure.numerator + '/' + exposure.denominator + 's' : 'N/A'}
+                //     // `;
+                // });
+                // /* ---------- 读取 EXIF 结束 ---------- */
+
+
+
+
+
+                /* ---------- 原有尺寸逻辑 ---------- */
                 const img = new Image();
                 img.onload = function() {
                     originalImageWidth = this.width;
@@ -1909,16 +1852,21 @@ function debounce($func, $wait = 500)
 
                     originalDimensions.textContent = `${originalImageWidth} x ${originalImageHeight}`;
                     processedDimensions.textContent = `${predictedWidth} x ${predictedHeight}`;
+
+                    previewImage.onload = function() {
+                        updatePreviewWatermark(
+                            sizeSlider.value,
+                            opacitySlider.value,
+                            getSelectedPosition()
+                        );
+                    };
                 };
                 img.src = URL.createObjectURL(file);
 
+                /* ---------- 预览 ---------- */
                 reader.onload = function(e) {
                     previewImage.src = e.target.result;
                     imagePreview.style.display = 'block';
-                    previewImage.onload = function() {
-                        updateWatermarkSettings();
-                        setWatermarkToPosition(getSelectedPosition());
-                    };
                 };
 
                 reader.readAsDataURL(file);
@@ -1963,80 +1911,13 @@ function debounce($func, $wait = 500)
         sizeSlider.addEventListener('input', updateWatermarkSettings);
         opacitySlider.addEventListener('input', updateWatermarkSettings);
         positionRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                setSelectedPosition(this.value);
-                setWatermarkToPosition(this.value);
-            });
-        });
-        quickPositionButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const pos = this.dataset.position;
-                setSelectedPosition(pos);
-                setWatermarkToPosition(pos);
-            });
+            radio.addEventListener('change', updateWatermarkSettings);
         });
 
-        watermarkElement.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            if (!previewImage.src) return;
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            initialLeft = parseFloat(watermarkElement.style.left) || 0;
-            initialTop = parseFloat(watermarkElement.style.top) || 0;
-            watermarkElement.classList.add('dragging');
-        });
-
-        document.addEventListener('mousemove', function(e) {
-            if (!isDragging) return;
-            watermarkElement.style.left = `${initialLeft + (e.clientX - startX)}px`;
-            watermarkElement.style.top = `${initialTop + (e.clientY - startY)}px`;
-            constrainWatermarkToImage();
-        });
-
-        document.addEventListener('mouseup', function() {
-            if (!isDragging) return;
-            isDragging = false;
-            watermarkElement.classList.remove('dragging');
-            setSelectedPosition(detectNearestPosition());
-        });
-
-        watermarkElement.addEventListener('touchstart', function(e) {
-            const touch = e.touches[0];
-            if (!touch || !previewImage.src) return;
-            e.preventDefault();
-            isDragging = true;
-            startX = touch.clientX;
-            startY = touch.clientY;
-            initialLeft = parseFloat(watermarkElement.style.left) || 0;
-            initialTop = parseFloat(watermarkElement.style.top) || 0;
-            watermarkElement.classList.add('dragging');
-        }, {
-            passive: false
-        });
-
-        document.addEventListener('touchmove', function(e) {
-            if (!isDragging) return;
-            const touch = e.touches[0];
-            if (!touch) return;
-            e.preventDefault();
-            watermarkElement.style.left = `${initialLeft + (touch.clientX - startX)}px`;
-            watermarkElement.style.top = `${initialTop + (touch.clientY - startY)}px`;
-            constrainWatermarkToImage();
-        }, {
-            passive: false
-        });
-
-        document.addEventListener('touchend', function() {
-            if (!isDragging) return;
-            isDragging = false;
-            watermarkElement.classList.remove('dragging');
-            setSelectedPosition(detectNearestPosition());
-        });
-
+        // 窗口大小变化时重新计算水印
         window.addEventListener('resize', function() {
             if (previewImage.complete && originalImageWidth > 0) {
-                constrainWatermarkToImage();
+                updatePreviewWatermark(sizeSlider.value, opacitySlider.value, getSelectedPosition());
             }
         });
 
@@ -2111,9 +1992,8 @@ function debounce($func, $wait = 500)
             }
         });
 
-        // 初始化水印设置
-        setSelectedPosition(getSelectedPosition());
-        updateWatermarkSettings();
+        // 初始化水印尺寸
+        loadWatermarkDimensions();
 
         // 表单提交处理
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
@@ -2132,7 +2012,6 @@ function debounce($func, $wait = 500)
             }
 
             // 显示提交中状态
-            updateWatermarkRatioInputs();
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
