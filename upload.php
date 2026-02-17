@@ -304,9 +304,32 @@ function addWatermark(
     // 用于飞机图标的候选字体（尝试包含 U+2708 的字体）
     $planeChar = "✈";
     $iconFontPath = null;
-    $iconCandidates = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 'C:/Windows/Fonts/seguisym.ttf', 'C:/Windows/Fonts/arial.ttf'];
+    $iconCandidates = [
+        __DIR__ . '/1755230823011393_dingliehuobanti.ttf',
+    ];
+    if ($fontPath) {
+        $iconCandidates[] = $fontPath; // 优先复用主文字字体，避免字符集不一致
+    }
+    $iconCandidates = array_merge(
+        $iconCandidates,
+        [
+            __DIR__ . '/fonts/fa-solid-900.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            'C:/Windows/Fonts/seguisym.ttf',
+            'C:/Windows/Fonts/arial.ttf'
+        ]
+    );
+    $checkedFonts = [];
     foreach ($iconCandidates as $c) {
-        if (file_exists($c) && is_readable($c)) { $iconFontPath = $c; break; }
+        if (!$c || isset($checkedFonts[$c])) {
+            continue;
+        }
+        $checkedFonts[$c] = true;
+        if (file_exists($c) && is_readable($c)) {
+            $iconFontPath = $c;
+            break;
+        }
     }
 
     // 测量文本尺寸
