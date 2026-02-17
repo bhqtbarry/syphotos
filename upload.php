@@ -1332,6 +1332,7 @@ function getPositionText($positionCode)
             font-size: 36px; /* JS 会根据设置动态调整 */
             line-height: 1;
             pointer-events: none;
+            font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Arial Unicode MS', 'Segoe UI', sans-serif;
         }
 
         .watermark-syphotos {
@@ -1459,16 +1460,16 @@ function getPositionText($positionCode)
 
                             <div class="image-preview drag-preview" id="imagePreview">
                                 <div class="image-container-wrapper">
-                                    <div class="image-container" id="imageContainer">
-                                        <img id="previewImage" class="preview-image" src="" alt="图片预览">
-                                        <div id="watermarkElement">
-                                            <div class="watermark-icon-text">
-                                                <i class="fas fa-plane watermark-icon"></i>
-                                                <div class="watermark-text watermark-syphotos">syphotos</div>
+                                        <div class="image-container" id="imageContainer">
+                                            <img id="previewImage" class="preview-image" src="" alt="图片预览">
+                                            <div id="watermarkElement">
+                                                <div class="watermark-icon-text">
+                                                    <span class="watermark-icon" aria-hidden="true">✈</span>
+                                                    <div class="watermark-text watermark-syphotos">syphotos</div>
+                                                </div>
+                                                <div class="watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
                                             </div>
-                                            <div class="watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
                                         </div>
-                                    </div>
                                 </div>
                                 <div class="drag-hint">
                                     <i class="fas fa-hand-pointer"></i> 提示：可直接拖动水印，水印会限制在图片范围内
