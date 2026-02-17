@@ -2170,24 +2170,58 @@ function getPositionText($positionCode)
         const watermarkColorInput = document.getElementById('watermark_color');
         const watermarkAuthorStyleInput = document.getElementById('watermark_author_style');
 
-        // 颜色选择逻辑
-        colorOptions.forEach(opt => {
-            opt.addEventListener('click', function() {
-                colorOptions.forEach(o => o.classList.remove('active'));
-                this.classList.add('active');
-                const c = this.getAttribute('data-color');
+        // 颜色选择逻辑（事件委托 + 立即生效）
+        document.querySelectorAll('.color-options').forEach(container => {
+            container.addEventListener('click', function(e) {
+                const opt = e.target.closest('.color-option');
+                if (!opt) return;
+                // 切换 UI 状态
+                container.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+
+                const c = opt.getAttribute('data-color') || 'white';
                 if (watermarkColorInput) watermarkColorInput.value = c;
+
+                // 立即应用到预览（确保即时反馈）
+                const textColor = c === 'black' ? '#000000' : '#ffffff';
+                if (typeof watermarkTitle !== 'undefined' && watermarkTitle) watermarkTitle.style.color = textColor;
+                if (typeof watermarkAuthor !== 'undefined' && watermarkAuthor) watermarkAuthor.style.color = textColor;
+                if (typeof watermarkIcon !== 'undefined' && watermarkIcon) watermarkIcon.style.color = textColor;
+
+                // 更新其余样式（阴影 / 大小 等）
                 updateWatermarkSettings();
             });
         });
 
-        // 作者样式按钮逻辑
-        styleButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                styleButtons.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                const s = this.getAttribute('data-style');
+        // 作者样式（事件委托 + 立即生效）
+        document.querySelectorAll('.watermark-style-controls').forEach(container => {
+            container.addEventListener('click', function(e) {
+                const btn = e.target.closest('.style-btn');
+                if (!btn) return;
+                container.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const s = btn.getAttribute('data-style') || 'default';
                 if (watermarkAuthorStyleInput) watermarkAuthorStyleInput.value = s;
+
+                // 立即应用到预览
+                if (typeof watermarkAuthor !== 'undefined' && watermarkAuthor) {
+                    switch (s) {
+                        case 'simple':
+                            watermarkAuthor.style.fontWeight = '400';
+                            watermarkAuthor.style.letterSpacing = 'normal';
+                            break;
+                        case 'bold':
+                            watermarkAuthor.style.fontWeight = '700';
+                            watermarkAuthor.style.letterSpacing = '1px';
+                            break;
+                        default:
+                            watermarkAuthor.style.fontWeight = '500';
+                            watermarkAuthor.style.letterSpacing = '0.5px';
+                            break;
+                    }
+                }
+
                 updateWatermarkSettings();
             });
         });
