@@ -720,21 +720,6 @@ function getPositionText($positionCode)
     return $positions[$positionCode] ?? '右下角';
 }
 
-/**
- * 防抖函数，避免频繁API请求
- */
-function debounce($func, $wait = 500)
-{
-    $timeout = null;
-    return function () use ($func, $wait, &$timeout) {
-        $context = $this;
-        $args = func_get_args();
-        clearTimeout($timeout);
-        $timeout = setTimeout(function () use ($func, $context, $args) {
-            call_user_func_array([$func, $context], $args);
-        }, $wait);
-    };
-}
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -747,6 +732,13 @@ function debounce($func, $wait = 500)
     <!-- <script src="https://cdn.jsdelivr.net/npm/exif-js"></script> -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <style>
+        @font-face {
+            font-family: 'DingLie';
+            src: local('DingLie'), url('./1755230823011393_dingliehuobanti.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
         :root {
             --primary: #165DFF;
             --primary-light: #4080FF;
@@ -1311,6 +1303,7 @@ function debounce($func, $wait = 500)
         }
 
         .watermark-syphotos {
+            font-family: 'DingLie', 'Segoe UI', Roboto, sans-serif;
             font-size: 42px;
             font-weight: 800;
             letter-spacing: 1px;
@@ -1318,6 +1311,7 @@ function debounce($func, $wait = 500)
         }
 
         .watermark-author {
+            font-family: 'DingLie', 'Segoe UI', Roboto, sans-serif;
             font-size: 18px;
             font-weight: 500;
             opacity: 0.95;
@@ -1328,7 +1322,9 @@ function debounce($func, $wait = 500)
         /* 颜色选择与作者样式按钮 */
         .color-options { display:flex; gap:10px; margin-top:6px; }
         .color-option { width:34px; height:34px; border-radius:50%; border:3px solid transparent; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
-        .color-option.active { transform:scale(1.05); border-color:rgba(0,0,0,0.12); }
+        .color-option.active { transform: scale(1.05); }
+        .color-option[data-color="white"].active { box-shadow: 0 0 0 3px rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.12); }
+        .color-option[data-color="black"].active { box-shadow: 0 0 0 3px rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.95); }
 
         .watermark-style-controls { display:flex; gap:10px; margin-top:8px; }
         .style-btn { padding:6px 12px; border-radius:14px; border:1px solid #ddd; background:#fff; cursor:pointer; font-size:13px; }
@@ -1872,6 +1868,19 @@ function debounce($func, $wait = 500)
             watermarkTitle.style.color = textColor;
             watermarkAuthor.style.color = textColor;
             if (watermarkIcon) watermarkIcon.style.color = textColor;
+
+            // 根据颜色选择使用对比阴影，提升可读性
+            const shadowOpacity = Math.max(0.12, (opacity / 100) * 0.6);
+            const shadowColor = selectedColor === 'black' ? `rgba(255,255,255,${shadowOpacity})` : `rgba(0,0,0,${shadowOpacity})`;
+            const textShadow = `1px 1px 3px ${shadowColor}`;
+            watermarkTitle.style.textShadow = textShadow;
+            watermarkAuthor.style.textShadow = textShadow;
+            if (watermarkIcon) watermarkIcon.style.textShadow = textShadow;
+
+            // 强制预览使用仓库字体（若可用）
+            const dingFont = 'DingLie, "Segoe UI", Roboto, sans-serif';
+            watermarkTitle.style.fontFamily = dingFont;
+            watermarkAuthor.style.fontFamily = dingFont;
 
             // 作者文字样式（对应 up3 预览）
             switch (selectedAuthorStyle) {
