@@ -216,7 +216,9 @@ function addWatermark(
     $opacity = 80,
     $position = 'bottom-right',
     $xRatio = null,
-    $yRatio = null
+    $yRatio = null,
+    $color = 'white',
+    $authorStyle = 'default'
 )
 {
     error_log("开始添加文字/图标水印 - 源: $sourcePath, 目标: $destPath, 大小: $watermarkSize%, 透明度: $opacity%, 位置: $position");
@@ -265,8 +267,14 @@ function addWatermark(
     $margin = 20;
 
     $alpha = (int)max(0, min(127, round(127 * (100 - $opacity) / 100)));
-    $colorWhite = imagecolorallocatealpha($image, 255, 255, 255, $alpha);
-    $colorShadow = imagecolorallocatealpha($image, 0, 0, 0, min(127, $alpha + 30));
+    // 根据用户选择的颜色决定主色与阴影色（白/黑）
+    if (isset($color) && $color === 'black') {
+        $colorMain = imagecolorallocatealpha($image, 0, 0, 0, $alpha);
+        $colorShadow = imagecolorallocatealpha($image, 255, 255, 255, min(127, $alpha + 30));
+    } else {
+        $colorMain = imagecolorallocatealpha($image, 255, 255, 255, $alpha);
+        $colorShadow = imagecolorallocatealpha($image, 0, 0, 0, min(127, $alpha + 30));
+    }
 
     // 字体查找（优先使用仓库内 TTF，否则回退到系统字体）
     $fontPath = null;
@@ -368,24 +376,31 @@ function addWatermark(
         // 飞机图标：先阴影后文字；若找不到图标字体则绘制替代多边形
         if ($iconFontPath) {
             imagettftext($image, $iconFontSize, 0, $iconX + 1, $iconY + 1, $colorShadow, $iconFontPath, $planeChar);
-            imagettftext($image, $iconFontSize, 0, $iconX, $iconY, $colorWhite, $iconFontPath, $planeChar);
+            imagettftext($image, $iconFontSize, 0, $iconX, $iconY, $colorMain, $iconFontPath, $planeChar);
         } else {
             $triShadow = [$iconX + 1, $y + (int)($blockH/2) + 1, $iconX + (int)($iconW*0.7) + 1, $y + 1, $iconX + (int)($iconW*0.7) + 1, $y + $blockH - 1];
             imagefilledpolygon($image, $triShadow, 3, $colorShadow);
             $tri = [$iconX, $y + (int)($blockH/2), $iconX + (int)($iconW*0.7), $y, $iconX + (int)($iconW*0.7), $y + $blockH];
-            imagefilledpolygon($image, $tri, 3, $colorWhite);
+            imagefilledpolygon($image, $tri, 3, $colorMain);
         }
 
         // 主文本与作者
         imagettftext($image, $mainFontSize, 0, $mainX + 1, $mainY + 1, $colorShadow, $fontPath, $line1);
-        imagettftext($image, $mainFontSize, 0, $mainX, $mainY, $colorWhite, $fontPath, $line1);
+        imagettftext($image, $mainFontSize, 0, $mainX, $mainY, $colorMain, $fontPath, $line1);
+        // 作者文字：阴影 + 主色，若选择粗体则额外再绘制一次以模拟加粗
         imagettftext($image, $authorFontSize, 0, $authX + 1, $authY + 1, $colorShadow, $fontPath, $line2);
-        imagettftext($image, $authorFontSize, 0, $authX, $authY, $colorWhite, $fontPath, $line2);
+        imagettftext($image, $authorFontSize, 0, $authX, $authY, $colorMain, $fontPath, $line2);
+        if (isset($authorStyle) && $authorStyle === 'bold') {
+            imagettftext($image, $authorFontSize, 0, $authX + 1, $authY, $colorMain, $fontPath, $line2);
+        }
     } else {
         imagestring($image, 5, $mainX + 1, $y + 1, $line1, $colorShadow);
-        imagestring($image, 5, $mainX, $y, $line1, $colorWhite);
+        imagestring($image, 5, $mainX, $y, $line1, $colorMain);
         imagestring($image, 3, $authX + 1, $y + $mainH + $lineGap + 1, $line2, $colorShadow);
-        imagestring($image, 3, $authX, $y + $mainH + $lineGap, $line2, $colorWhite);
+        imagestring($image, 3, $authX, $y + $mainH + $lineGap, $line2, $colorMain);
+        if (isset($authorStyle) && $authorStyle === 'bold') {
+            imagestring($image, 3, $authX + 1, $y + $mainH + $lineGap, $line2, $colorMain);
+        }
     }
 
     // 保存带水印的图片
@@ -413,30 +428,41 @@ function addWatermark(
     $trans = imagecolorallocatealpha($wm, 0, 0, 0, 127);
     imagefill($wm, 0, 0, $trans);
 
-    $wmWhite = imagecolorallocatealpha($wm, 255, 255, 255, $alpha);
-    $wmShadow = imagecolorallocatealpha($wm, 0, 0, 0, min(127, $alpha + 30));
+    if (isset($color) && $color === 'black') {
+        $wmMain = imagecolorallocatealpha($wm, 0, 0, 0, $alpha);
+        $wmShadow = imagecolorallocatealpha($wm, 255, 255, 255, min(127, $alpha + 30));
+    } else {
+        $wmMain = imagecolorallocatealpha($wm, 255, 255, 255, $alpha);
+        $wmShadow = imagecolorallocatealpha($wm, 0, 0, 0, min(127, $alpha + 30));
+    }
 
     // 绘制到水印图（相对坐标）
     if ($fontPath && function_exists('imagettftext')) {
         if ($iconFontPath) {
             imagettftext($wm, $iconFontSize, 0, 0 + 1, $iconH + 1, $wmShadow, $iconFontPath, $planeChar);
-            imagettftext($wm, $iconFontSize, 0, 0, $iconH, $wmWhite, $iconFontPath, $planeChar);
+            imagettftext($wm, $iconFontSize, 0, 0, $iconH, $wmMain, $iconFontPath, $planeChar);
         } else {
             $triShadow = [1, (int)($blockH/2) + 1, (int)($iconW*0.7) + 1, 1, (int)($iconW*0.7) + 1, $blockH - 1];
             imagefilledpolygon($wm, $triShadow, 3, $wmShadow);
             $tri = [0, (int)($blockH/2), (int)($iconW*0.7), 0, (int)($iconW*0.7), $blockH];
-            imagefilledpolygon($wm, $tri, 3, $wmWhite);
+            imagefilledpolygon($wm, $tri, 3, $wmMain);
         }
 
         imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween + 1, $mainH + 1, $wmShadow, $fontPath, $line1);
-        imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween, $mainH, $wmWhite, $fontPath, $line1);
+        imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween, $mainH, $wmMain, $fontPath, $line1);
         imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + $authH + 1, $wmShadow, $fontPath, $line2);
-        imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2), $mainH + $lineGap + $authH, $wmWhite, $fontPath, $line2);
+        imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2), $mainH + $lineGap + $authH, $wmMain, $fontPath, $line2);
+        if (isset($authorStyle) && $authorStyle === 'bold') {
+            imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + $authH, $wmMain, $fontPath, $line2);
+        }
     } else {
         imagestring($wm, 5, $iconW + $gapBetween + 1, 1, $line1, $wmShadow);
-        imagestring($wm, 5, $iconW + $gapBetween, 0, $line1, $wmWhite);
+        imagestring($wm, 5, $iconW + $gapBetween, 0, $line1, $wmMain);
         imagestring($wm, 3, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + 1, $line2, $wmShadow);
-        imagestring($wm, 3, (int)(($blockW - $authW) / 2), $mainH + $lineGap, $line2, $wmWhite);
+        imagestring($wm, 3, (int)(($blockW - $authW) / 2), $mainH + $lineGap, $line2, $wmMain);
+        if (isset($authorStyle) && $authorStyle === 'bold') {
+            imagestring($wm, 3, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap, $line2, $wmMain);
+        }
     }
 
     // 保存水印单独文件
@@ -505,6 +531,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                 $watermarkYRatio = max(0, min(1, (float)$_POST['watermark_y_ratio']));
             }
 
+            // 新增：颜色与作者文字样式
+            $watermarkColor = (isset($_POST['watermark_color']) && in_array($_POST['watermark_color'], ['white','black'])) ? $_POST['watermark_color'] : 'white';
+            $watermarkAuthorStyle = (isset($_POST['watermark_author_style']) && in_array($_POST['watermark_author_style'], ['default','simple','bold'])) ? $_POST['watermark_author_style'] : 'default';
+
             $filename = uniqid() . '_' . basename($_FILES['photo']['name']);
             $target_path = $upload_dir . $filename;
             $temp_path = $upload_dir . 'temp_' . $filename;
@@ -534,7 +564,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                     $watermarkOpacity,
                     $watermarkPosition,
                     $watermarkXRatio,
-                    $watermarkYRatio
+                    $watermarkYRatio,
+                    $watermarkColor,
+                    $watermarkAuthorStyle
                 );
 
                 if (!$watermarkResult['status']) {
@@ -1293,6 +1325,16 @@ function debounce($func, $wait = 500)
             pointer-events: none;
         }
 
+        /* 颜色选择与作者样式按钮 */
+        .color-options { display:flex; gap:10px; margin-top:6px; }
+        .color-option { width:34px; height:34px; border-radius:50%; border:3px solid transparent; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+        .color-option.active { transform:scale(1.05); border-color:rgba(0,0,0,0.12); }
+
+        .watermark-style-controls { display:flex; gap:10px; margin-top:8px; }
+        .style-btn { padding:6px 12px; border-radius:14px; border:1px solid #ddd; background:#fff; cursor:pointer; font-size:13px; }
+        .style-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+        .style-btn:focus { outline: none; }
+
         .drag-hint {
             margin-top: 8px;
             font-size: 12px;
@@ -1445,6 +1487,26 @@ function debounce($func, $wait = 500)
                                         </span>
                                     </div>
                                 </div>
+
+                                <!-- 水印颜色 -->
+                                <div class="control-group">
+                                    <div class="control-title"><i class="fas fa-palette"></i> 水印颜色</div>
+                                    <div class="color-options">
+                                        <div class="color-option <?php echo (isset($_POST['watermark_color']) && $_POST['watermark_color'] == 'white') || !isset($_POST['watermark_color']) ? 'active' : ''; ?>" data-color="white" title="白色" style="background:#ffffff;"></div>
+                                        <div class="color-option <?php echo isset($_POST['watermark_color']) && $_POST['watermark_color'] == 'black' ? 'active' : ''; ?>" data-color="black" title="黑色" style="background:#000000;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 作者文字样式 -->
+                                <div class="control-group">
+                                    <div class="control-title"><i class="fas fa-layer-group"></i> 作者文字样式</div>
+                                    <div class="watermark-style-controls">
+                                        <button type="button" class="style-btn <?php echo (!isset($_POST['watermark_author_style']) || $_POST['watermark_author_style'] == 'default') ? 'active' : ''; ?>" data-style="default">默认样式</button>
+                                        <button type="button" class="style-btn <?php echo isset($_POST['watermark_author_style']) && $_POST['watermark_author_style'] == 'simple' ? 'active' : ''; ?>" data-style="simple">简洁样式</button>
+                                        <button type="button" class="style-btn <?php echo isset($_POST['watermark_author_style']) && $_POST['watermark_author_style'] == 'bold' ? 'active' : ''; ?>" data-style="bold">粗体样式</button>
+                                    </div>
+                                </div>
+
                                 <div class="quick-position-grid">
                                     <button type="button" class="quick-position-btn" data-position="top-left">左上</button>
                                     <button type="button" class="quick-position-btn" data-position="top-center">上中</button>
@@ -1802,6 +1864,32 @@ function debounce($func, $wait = 500)
             watermarkAuthor.style.fontSize = `${authorSizeOnScreen}px`;
             if (watermarkIcon) watermarkIcon.style.fontSize = `${iconSizeOnScreen}px`;
 
+            // 应用颜色与作者样式（从隐藏字段或 UI 状态）
+            const selectedColor = document.getElementById('watermark_color') ? document.getElementById('watermark_color').value : 'white';
+            const selectedAuthorStyle = document.getElementById('watermark_author_style') ? document.getElementById('watermark_author_style').value : 'default';
+
+            const textColor = selectedColor === 'black' ? '#000000' : '#ffffff';
+            watermarkTitle.style.color = textColor;
+            watermarkAuthor.style.color = textColor;
+            if (watermarkIcon) watermarkIcon.style.color = textColor;
+
+            // 作者文字样式（对应 up3 预览）
+            switch (selectedAuthorStyle) {
+                case 'simple':
+                    watermarkAuthor.style.fontWeight = '400';
+                    watermarkAuthor.style.letterSpacing = 'normal';
+                    break;
+                case 'bold':
+                    watermarkAuthor.style.fontWeight = '700';
+                    watermarkAuthor.style.letterSpacing = '1px';
+                    break;
+                case 'default':
+                default:
+                    watermarkAuthor.style.fontWeight = '500';
+                    watermarkAuthor.style.letterSpacing = '0.5px';
+                    break;
+            }
+
             watermarkElement.style.opacity = opacity / 100;
             setWatermarkToPosition(position);
         }
@@ -2068,6 +2156,33 @@ function debounce($func, $wait = 500)
         });
 
         // 监听水印设置变化
+        const colorOptions = document.querySelectorAll('.color-option');
+        const styleButtons = document.querySelectorAll('.style-btn');
+        const watermarkColorInput = document.getElementById('watermark_color');
+        const watermarkAuthorStyleInput = document.getElementById('watermark_author_style');
+
+        // 颜色选择逻辑
+        colorOptions.forEach(opt => {
+            opt.addEventListener('click', function() {
+                colorOptions.forEach(o => o.classList.remove('active'));
+                this.classList.add('active');
+                const c = this.getAttribute('data-color');
+                if (watermarkColorInput) watermarkColorInput.value = c;
+                updateWatermarkSettings();
+            });
+        });
+
+        // 作者样式按钮逻辑
+        styleButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                styleButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const s = this.getAttribute('data-style');
+                if (watermarkAuthorStyleInput) watermarkAuthorStyleInput.value = s;
+                updateWatermarkSettings();
+            });
+        });
+
         sizeSlider.addEventListener('input', updateWatermarkSettings);
         opacitySlider.addEventListener('input', updateWatermarkSettings);
         positionRadios.forEach(radio => {
