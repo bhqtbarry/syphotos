@@ -17,6 +17,15 @@ $error = '';
 $success = '';
 $max_upload_size = 45 * 1024 * 1024; // 45MB
 
+$watermarkColorOptions = ['white', 'black'];
+$watermarkAuthorStyleOptions = ['default', 'simple', 'bold'];
+$currentWatermarkColor = (isset($_POST['watermark_color']) && in_array($_POST['watermark_color'], $watermarkColorOptions, true))
+    ? $_POST['watermark_color']
+    : 'white';
+$currentWatermarkAuthorStyle = (isset($_POST['watermark_author_style']) && in_array($_POST['watermark_author_style'], $watermarkAuthorStyleOptions, true))
+    ? $_POST['watermark_author_style']
+    : 'default';
+
 // 确保uploads目录可写
 $upload_dir = 'uploads/';
 if (!is_dir($upload_dir)) {
@@ -1488,19 +1497,21 @@ function getPositionText($positionCode)
                                 <div class="control-group">
                                     <div class="control-title"><i class="fas fa-palette"></i> 水印颜色</div>
                                     <div class="color-options">
-                                        <div class="color-option <?php echo (isset($_POST['watermark_color']) && $_POST['watermark_color'] == 'white') || !isset($_POST['watermark_color']) ? 'active' : ''; ?>" data-color="white" title="白色" style="background:#ffffff;"></div>
-                                        <div class="color-option <?php echo isset($_POST['watermark_color']) && $_POST['watermark_color'] == 'black' ? 'active' : ''; ?>" data-color="black" title="黑色" style="background:#000000;"></div>
+                                        <div class="color-option <?php echo $currentWatermarkColor === 'white' ? 'active' : ''; ?>" data-color="white" title="白色" style="background:#ffffff;"></div>
+                                        <div class="color-option <?php echo $currentWatermarkColor === 'black' ? 'active' : ''; ?>" data-color="black" title="黑色" style="background:#000000;"></div>
                                     </div>
+                                    <input type="hidden" id="watermark_color" name="watermark_color" value="<?php echo htmlspecialchars($currentWatermarkColor, ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
 
                                 <!-- 作者文字样式 -->
                                 <div class="control-group">
                                     <div class="control-title"><i class="fas fa-layer-group"></i> 作者文字样式</div>
                                     <div class="watermark-style-controls">
-                                        <button type="button" class="style-btn <?php echo (!isset($_POST['watermark_author_style']) || $_POST['watermark_author_style'] == 'default') ? 'active' : ''; ?>" data-style="default">默认样式</button>
-                                        <button type="button" class="style-btn <?php echo isset($_POST['watermark_author_style']) && $_POST['watermark_author_style'] == 'simple' ? 'active' : ''; ?>" data-style="simple">简洁样式</button>
-                                        <button type="button" class="style-btn <?php echo isset($_POST['watermark_author_style']) && $_POST['watermark_author_style'] == 'bold' ? 'active' : ''; ?>" data-style="bold">粗体样式</button>
+                                        <button type="button" class="style-btn <?php echo $currentWatermarkAuthorStyle === 'default' ? 'active' : ''; ?>" data-style="default">默认样式</button>
+                                        <button type="button" class="style-btn <?php echo $currentWatermarkAuthorStyle === 'simple' ? 'active' : ''; ?>" data-style="simple">简洁样式</button>
+                                        <button type="button" class="style-btn <?php echo $currentWatermarkAuthorStyle === 'bold' ? 'active' : ''; ?>" data-style="bold">粗体样式</button>
                                     </div>
+                                    <input type="hidden" id="watermark_author_style" name="watermark_author_style" value="<?php echo htmlspecialchars($currentWatermarkAuthorStyle, ENT_QUOTES, 'UTF-8'); ?>">
                                 </div>
 
                                 <div class="quick-position-grid">
