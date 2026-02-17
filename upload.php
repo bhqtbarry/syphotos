@@ -22,6 +22,10 @@ $upload_dir = 'uploads/';
 if (!is_dir($upload_dir)) {
     mkdir($upload_dir, 0755, true);
 }
+$watermark_dir = $upload_dir . 'watermarks/';
+if (!is_dir($watermark_dir)) {
+    mkdir($watermark_dir, 0755, true);
+}
 if (!is_writable($upload_dir)) {
     $error = '上传目录不可写，请检查权限设置';
 }
@@ -215,63 +219,56 @@ function addWatermark(
     $yRatio = null
 )
 {
-    error_log("开始添加文字水印 - 源路径: $sourcePath, 目标路径: $destPath, 大小: $watermarkSize%, 透明度: $opacity%, 位置: $position");
+    error_log("开始添加文字/图标水印 - 源: $sourcePath, 目标: $destPath, 大小: $watermarkSize%, 透明度: $opacity%, 位置: $position");
 
     $scale = $originalWidth > 0 ? ($finalWidth / $originalWidth) : 1;
 
     if (!file_exists($sourcePath)) {
-        error_log("源图片不存在: " . $sourcePath);
         return ['status' => false, 'error' => '源图片文件未找到', 'watermark_size_used' => 0];
     }
 
     $imageInfo = getimagesize($sourcePath);
     if (!$imageInfo) {
-        error_log("无法获取图片信息: " . $sourcePath);
         return ['status' => false, 'error' => '无法解析图片信息', 'watermark_size_used' => 0];
     }
 
     list($width, $height, $type) = $imageInfo;
-    error_log("源图片尺寸: $width x $height, 类型: $type");
 
-    try {
-        switch ($type) {
-            case IMAGETYPE_JPEG:
-                $image = imagecreatefromjpeg($sourcePath);
-                break;
-            case IMAGETYPE_PNG:
-                $image = imagecreatefrompng($sourcePath);
-                imagesavealpha($image, true);
-                break;
-            case IMAGETYPE_GIF:
-                $image = imagecreatefromgif($sourcePath);
-                imagesavealpha($image, true);
-                break;
-            default:
-                return ['status' => false, 'error' => '不支持的图片格式', 'watermark_size_used' => 0];
-        }
-        imagealphablending($image, true);
-    } catch (Exception $e) {
-        error_log("创建图像资源失败: " . $e->getMessage());
-        return ['status' => false, 'error' => '图片处理失败', 'watermark_size_used' => 0];
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $image = imagecreatefromjpeg($sourcePath);
+            break;
+        case IMAGETYPE_PNG:
+            $image = imagecreatefrompng($sourcePath);
+            imagesavealpha($image, true);
+            break;
+        case IMAGETYPE_GIF:
+            $image = imagecreatefromgif($sourcePath);
+            imagesavealpha($image, true);
+            break;
+        default:
+            return ['status' => false, 'error' => '不支持的图片格式', 'watermark_size_used' => 0];
     }
+    imagealphablending($image, true);
 
-    $username = trim((string)($_SESSION['username'] ?? 'photographer'));
-    if ($username === '') {
-        $username = 'photographer';
-    }
+    $username = trim((string)($_SESSION['username'] ?? 'photographer')) ?: 'photographer';
     $line1 = 'syphotos';
     $line2 = '@' . $username;
 
+    // 尺寸计算（与前端预览算法保持一致）
     $targetBlockWidth = max(20, min(intval(round($finalWidth * ($watermarkSize / 100))), intval(round($finalWidth * 0.5))));
     $mainFontSize = max(10, (int)round($targetBlockWidth / 4.2));
+    $iconFontSize = max(8, (int)round($mainFontSize * 0.8));
     $authorFontSize = max(8, (int)round($mainFontSize * 0.45));
     $lineGap = max(2, (int)round($mainFontSize * 0.25));
+    $gapBetween = max(8, (int)round($mainFontSize * 0.18));
     $margin = 20;
 
     $alpha = (int)max(0, min(127, round(127 * (100 - $opacity) / 100)));
-    $white = imagecolorallocatealpha($image, 255, 255, 255, $alpha);
-    $shadow = imagecolorallocatealpha($image, 0, 0, 0, min(127, $alpha + 30));
+    $colorWhite = imagecolorallocatealpha($image, 255, 255, 255, $alpha);
+    $colorShadow = imagecolorallocatealpha($image, 0, 0, 0, min(127, $alpha + 30));
 
+    // 字体查找（优先使用仓库内 TTF，否则回退到系统字体）
     $fontPath = null;
     $fontCandidates = [
         __DIR__ . '/1755230823011393_dingliehuobanti.ttf',
@@ -280,129 +277,187 @@ function addWatermark(
         '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         'C:/Windows/Fonts/arial.ttf',
-        'C:/Windows/Fonts/msyh.ttc'
+        'C:/Windows/Fonts/msyh.ttc',
+        'C:/Windows/Fonts/seguisym.ttf'
     ];
-    foreach ($fontCandidates as $candidate) {
-        if (file_exists($candidate) && is_readable($candidate)) {
-            $fontPath = $candidate;
-            break;
-        }
+    foreach ($fontCandidates as $c) {
+        if (file_exists($c) && is_readable($c)) { $fontPath = $c; break; }
     }
 
-    if ($fontPath && function_exists('imagettftext') && function_exists('imagettfbbox')) {
-        $bbox1 = imagettfbbox($mainFontSize, 0, $fontPath, $line1);
-        $bbox2 = imagettfbbox($authorFontSize, 0, $fontPath, $line2);
-        $line1Width = max(1, (int)abs($bbox1[2] - $bbox1[0]));
-        $line2Width = max(1, (int)abs($bbox2[2] - $bbox2[0]));
-        $line1Height = max(1, (int)abs($bbox1[7] - $bbox1[1]));
-        $line2Height = max(1, (int)abs($bbox2[7] - $bbox2[1]));
+    // 用于飞机图标的候选字体（尝试包含 U+2708 的字体）
+    $planeChar = "✈";
+    $iconFontPath = null;
+    $iconCandidates = ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 'C:/Windows/Fonts/seguisym.ttf', 'C:/Windows/Fonts/arial.ttf'];
+    foreach ($iconCandidates as $c) {
+        if (file_exists($c) && is_readable($c)) { $iconFontPath = $c; break; }
+    }
+
+    // 测量文本尺寸
+    if ($fontPath && function_exists('imagettfbbox')) {
+        $bboxMain = imagettfbbox($mainFontSize, 0, $fontPath, $line1);
+        $bboxAuth = imagettfbbox($authorFontSize, 0, $fontPath, $line2);
+        $mainW = max(1, abs($bboxMain[2] - $bboxMain[0]));
+        $mainH = max(1, abs($bboxMain[7] - $bboxMain[1]));
+        $authW = max(1, abs($bboxAuth[2] - $bboxAuth[0]));
+        $authH = max(1, abs($bboxAuth[7] - $bboxAuth[1]));
     } else {
-        $line1Width = imagefontwidth(5) * strlen($line1);
-        $line2Width = imagefontwidth(3) * strlen($line2);
-        $line1Height = imagefontheight(5);
-        $line2Height = imagefontheight(3);
+        $mainW = imagefontwidth(5) * strlen($line1);
+        $mainH = imagefontheight(5);
+        $authW = imagefontwidth(3) * strlen($line2);
+        $authH = imagefontheight(3);
     }
 
-    $adjustedWidth = max($line1Width, $line2Width);
-    $adjustedHeight = $line1Height + $lineGap + $line2Height;
+    // 飞机图标宽高估算或测量
+    if ($iconFontPath && function_exists('imagettfbbox')) {
+        $bboxIcon = imagettfbbox($iconFontSize, 0, $iconFontPath, $planeChar);
+        $iconW = max(1, abs($bboxIcon[2] - $bboxIcon[0]));
+        $iconH = max(1, abs($bboxIcon[7] - $bboxIcon[1]));
+    } else {
+        $iconW = (int)round($iconFontSize * 0.9);
+        $iconH = $iconFontSize;
+        $iconFontPath = null; // 标记为无字体图标
+    }
 
+    $blockW = $iconW + $gapBetween + max($mainW, $authW);
+    $blockH = $mainH + $lineGap + $authH;
+
+    // 计算位置
     $hasCustomRatio = is_numeric($xRatio) && is_numeric($yRatio);
     if ($hasCustomRatio) {
         $xRatio = max(0, min(1, (float)$xRatio));
         $yRatio = max(0, min(1, (float)$yRatio));
-        $x = $xRatio * max(0, ($width - $adjustedWidth));
-        $y = $yRatio * max(0, ($height - $adjustedHeight));
+        $x = (int)round($xRatio * max(0, ($width - $blockW)));
+        $y = (int)round($yRatio * max(0, ($height - $blockH)));
     } else {
         switch ($position) {
             case 'top-left':
-                $x = $margin;
-                $y = $margin;
-                break;
+                $x = $margin; $y = $margin; break;
             case 'top-center':
-                $x = ($width - $adjustedWidth) / 2;
-                $y = $margin;
-                break;
+                $x = (int)(($width - $blockW) / 2); $y = $margin; break;
             case 'top-right':
-                $x = $width - $adjustedWidth - $margin;
-                $y = $margin;
-                break;
+                $x = $width - $blockW - $margin; $y = $margin; break;
             case 'middle-left':
-                $x = $margin;
-                $y = ($height - $adjustedHeight) / 2;
-                break;
+                $x = $margin; $y = (int)(($height - $blockH) / 2); break;
             case 'middle-center':
-                $x = ($width - $adjustedWidth) / 2;
-                $y = ($height - $adjustedHeight) / 2;
-                break;
+                $x = (int)(($width - $blockW) / 2); $y = (int)(($height - $blockH) / 2); break;
             case 'middle-right':
-                $x = $width - $adjustedWidth - $margin;
-                $y = ($height - $adjustedHeight) / 2;
-                break;
+                $x = $width - $blockW - $margin; $y = (int)(($height - $blockH) / 2); break;
             case 'bottom-left':
-                $x = $margin;
-                $y = $height - $adjustedHeight - $margin;
-                break;
+                $x = $margin; $y = $height - $blockH - $margin; break;
             case 'bottom-center':
-                $x = ($width - $adjustedWidth) / 2;
-                $y = $height - $adjustedHeight - $margin;
-                break;
+                $x = (int)(($width - $blockW) / 2); $y = $height - $blockH - $margin; break;
             case 'bottom-right':
             default:
-                $x = $width - $adjustedWidth - $margin;
-                $y = $height - $adjustedHeight - $margin;
-                break;
+                $x = $width - $blockW - $margin; $y = $height - $blockH - $margin; break;
         }
     }
 
-    $x = max(0, min((int)round($x), max(0, $width - $adjustedWidth)));
-    $y = max(0, min((int)round($y), max(0, $height - $adjustedHeight)));
+    $x = max(0, min((int)$x, max(0, $width - $blockW)));
+    $y = max(0, min((int)$y, max(0, $height - $blockH)));
 
+    // 计算各元素绘制坐标（基于图像坐标）
+    $iconX = $x;
+    $iconY = $y + $iconH; // baseline-ish
+    $mainX = $x + $iconW + $gapBetween;
+    $mainY = $y + $mainH; // baseline for main text
+    $authX = $x + (int)(($blockW - $authW) / 2);
+    $authY = $mainY + $lineGap + $authH;
+
+    // 在源图上绘制（先阴影，再主色）
     if ($fontPath && function_exists('imagettftext')) {
-        $line1BaseY = $y + $line1Height;
-        $line2BaseY = $line1BaseY + $lineGap + $line2Height;
+        // 飞机图标：先阴影后文字；若找不到图标字体则绘制替代多边形
+        if ($iconFontPath) {
+            imagettftext($image, $iconFontSize, 0, $iconX + 1, $iconY + 1, $colorShadow, $iconFontPath, $planeChar);
+            imagettftext($image, $iconFontSize, 0, $iconX, $iconY, $colorWhite, $iconFontPath, $planeChar);
+        } else {
+            $triShadow = [$iconX + 1, $y + (int)($blockH/2) + 1, $iconX + (int)($iconW*0.7) + 1, $y + 1, $iconX + (int)($iconW*0.7) + 1, $y + $blockH - 1];
+            imagefilledpolygon($image, $triShadow, 3, $colorShadow);
+            $tri = [$iconX, $y + (int)($blockH/2), $iconX + (int)($iconW*0.7), $y, $iconX + (int)($iconW*0.7), $y + $blockH];
+            imagefilledpolygon($image, $tri, 3, $colorWhite);
+        }
 
-        imagettftext($image, $mainFontSize, 0, $x + 1, $line1BaseY + 1, $shadow, $fontPath, $line1);
-        imagettftext($image, $mainFontSize, 0, $x, $line1BaseY, $white, $fontPath, $line1);
-        imagettftext($image, $authorFontSize, 0, $x + 1, $line2BaseY + 1, $shadow, $fontPath, $line2);
-        imagettftext($image, $authorFontSize, 0, $x, $line2BaseY, $white, $fontPath, $line2);
+        // 主文本与作者
+        imagettftext($image, $mainFontSize, 0, $mainX + 1, $mainY + 1, $colorShadow, $fontPath, $line1);
+        imagettftext($image, $mainFontSize, 0, $mainX, $mainY, $colorWhite, $fontPath, $line1);
+        imagettftext($image, $authorFontSize, 0, $authX + 1, $authY + 1, $colorShadow, $fontPath, $line2);
+        imagettftext($image, $authorFontSize, 0, $authX, $authY, $colorWhite, $fontPath, $line2);
     } else {
-        imagestring($image, 5, $x + 1, $y + 1, $line1, $shadow);
-        imagestring($image, 5, $x, $y, $line1, $white);
-        $line2Y = $y + $line1Height + $lineGap;
-        imagestring($image, 3, $x + 1, $line2Y + 1, $line2, $shadow);
-        imagestring($image, 3, $x, $line2Y, $line2, $white);
+        imagestring($image, 5, $mainX + 1, $y + 1, $line1, $colorShadow);
+        imagestring($image, 5, $mainX, $y, $line1, $colorWhite);
+        imagestring($image, 3, $authX + 1, $y + $mainH + $lineGap + 1, $line2, $colorShadow);
+        imagestring($image, 3, $authX, $y + $mainH + $lineGap, $line2, $colorWhite);
     }
 
-    $result = false;
+    // 保存带水印的图片
+    $saveResult = false;
     switch ($type) {
         case IMAGETYPE_JPEG:
-            $result = imagejpeg($image, $destPath, 90);
+            $saveResult = imagejpeg($image, $destPath, 90);
             break;
         case IMAGETYPE_PNG:
-            $result = imagepng($image, $destPath);
+            $saveResult = imagepng($image, $destPath);
             break;
         case IMAGETYPE_GIF:
-            $result = imagegif($image, $destPath);
+            $saveResult = imagegif($image, $destPath);
             break;
     }
 
-    imagedestroy($image);
-
-    if (!$result || !file_exists($destPath)) {
-        error_log("保存水印图片失败: " . $destPath);
+    if (!$saveResult) {
+        imagedestroy($image);
         return ['status' => false, 'error' => '保存水印图片失败', 'watermark_size_used' => 0];
     }
 
-    error_log("文字水印添加成功，保存路径: $destPath");
+    // 生成单独的透明背景水印 PNG（与预览一致）
+    $wm = imagecreatetruecolor($blockW, $blockH);
+    imagesavealpha($wm, true);
+    $trans = imagecolorallocatealpha($wm, 0, 0, 0, 127);
+    imagefill($wm, 0, 0, $trans);
+
+    $wmWhite = imagecolorallocatealpha($wm, 255, 255, 255, $alpha);
+    $wmShadow = imagecolorallocatealpha($wm, 0, 0, 0, min(127, $alpha + 30));
+
+    // 绘制到水印图（相对坐标）
+    if ($fontPath && function_exists('imagettftext')) {
+        if ($iconFontPath) {
+            imagettftext($wm, $iconFontSize, 0, 0 + 1, $iconH + 1, $wmShadow, $iconFontPath, $planeChar);
+            imagettftext($wm, $iconFontSize, 0, 0, $iconH, $wmWhite, $iconFontPath, $planeChar);
+        } else {
+            $triShadow = [1, (int)($blockH/2) + 1, (int)($iconW*0.7) + 1, 1, (int)($iconW*0.7) + 1, $blockH - 1];
+            imagefilledpolygon($wm, $triShadow, 3, $wmShadow);
+            $tri = [0, (int)($blockH/2), (int)($iconW*0.7), 0, (int)($iconW*0.7), $blockH];
+            imagefilledpolygon($wm, $tri, 3, $wmWhite);
+        }
+
+        imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween + 1, $mainH + 1, $wmShadow, $fontPath, $line1);
+        imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween, $mainH, $wmWhite, $fontPath, $line1);
+        imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + $authH + 1, $wmShadow, $fontPath, $line2);
+        imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2), $mainH + $lineGap + $authH, $wmWhite, $fontPath, $line2);
+    } else {
+        imagestring($wm, 5, $iconW + $gapBetween + 1, 1, $line1, $wmShadow);
+        imagestring($wm, 5, $iconW + $gapBetween, 0, $line1, $wmWhite);
+        imagestring($wm, 3, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + 1, $line2, $wmShadow);
+        imagestring($wm, 3, (int)(($blockW - $authW) / 2), $mainH + $lineGap, $line2, $wmWhite);
+    }
+
+    // 保存水印单独文件
+    $wmDir = dirname($destPath) . '/watermarks/';
+    if (!is_dir($wmDir)) @mkdir($wmDir, 0755, true);
+    $wmPath = $wmDir . pathinfo($destPath, PATHINFO_FILENAME) . '_preview_wm.png';
+    imagepng($wm, $wmPath);
+    imagedestroy($wm);
+
+    imagedestroy($image);
 
     return [
         'status' => true,
         'watermark_size_used' => $watermarkSize,
         'watermark_position_used' => $position,
-        'adjusted_width' => $adjustedWidth,
-        'adjusted_height' => $adjustedHeight,
-        'scale_used' => $scale
+        'adjusted_width' => $blockW,
+        'adjusted_height' => $blockH,
+        'scale_used' => $scale,
+        'preview_watermark_path' => $wmPath
     ];
+
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
@@ -592,6 +647,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
 
                         $success = '图片上传成功，已添加水印（大小: ' . $watermarkSize . '%, 位置: ' .
                             getPositionText($watermarkPosition) . '），等待审核';
+
+                        if (!empty($watermarkResult['preview_watermark_path'])) {
+                            $wmPath = $watermarkResult['preview_watermark_path'];
+                            // 把服务器相对路径用于显示（uploads/...）
+                            $wmUrl = $wmPath;
+                            $success .= ' 已生成预览水印文件：<a href="' . htmlspecialchars($wmUrl) . '" target="_blank">预览水印</a>';
+                        }
+
                         $_POST = [];
                     } catch (PDOException $e) {
                         $error = "数据库保存失败: " . $e->getMessage();
@@ -1182,8 +1245,12 @@ function debounce($func, $wait = 500)
             border: 2px dashed transparent;
             padding: 0;
             line-height: 1.2;
-            text-align: left;
+            text-align: center;
             white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
         }
 
         #watermarkElement.dragging,
@@ -1196,16 +1263,34 @@ function debounce($func, $wait = 500)
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
         }
 
+        .watermark-icon-text {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            pointer-events: none; /* allow dragging the container */
+        }
+
+        .watermark-icon {
+            font-size: 36px; /* JS 会根据设置动态调整 */
+            line-height: 1;
+            pointer-events: none;
+        }
+
         .watermark-syphotos {
             font-size: 42px;
             font-weight: 800;
             letter-spacing: 1px;
+            pointer-events: none;
         }
 
         .watermark-author {
             font-size: 18px;
             font-weight: 500;
             opacity: 0.95;
+            margin-top: 8px;
+            pointer-events: none;
         }
 
         .drag-hint {
@@ -1307,8 +1392,11 @@ function debounce($func, $wait = 500)
                                     <div class="image-container" id="imageContainer">
                                         <img id="previewImage" class="preview-image" src="" alt="图片预览">
                                         <div id="watermarkElement">
-                                            <div class="watermark-text watermark-syphotos">syphotos</div>
-                                            <div class="watermark-text watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
+                                            <div class="watermark-icon-text">
+                                                <i class="fas fa-plane watermark-icon"></i>
+                                                <div class="watermark-text watermark-syphotos">syphotos</div>
+                                            </div>
+                                            <div class="watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1600,6 +1688,7 @@ function debounce($func, $wait = 500)
         const imageContainer = document.getElementById('imageContainer');
         const watermarkTitle = document.querySelector('.watermark-syphotos');
         const watermarkAuthor = document.querySelector('.watermark-author');
+        const watermarkIcon = document.querySelector('.watermark-icon');
         const maxUploadSize = 45 * 1024 * 1024;
         const watermarkXRatioInput = document.getElementById('watermark_x_ratio');
         const watermarkYRatioInput = document.getElementById('watermark_y_ratio');
@@ -1695,10 +1784,24 @@ function debounce($func, $wait = 500)
             displayedWatermarkSize.textContent = `${size}%`;
             setSelectedPosition(position);
 
-            const mainSize = Math.max(24, Math.round(18 + size * 1.1));
-            const authorSize = Math.max(12, Math.round(mainSize * 0.45));
-            watermarkTitle.style.fontSize = `${mainSize}px`;
-            watermarkAuthor.style.fontSize = `${authorSize}px`;
+            // 与后端算法保持一致：先计算目标块宽度，再由块宽派生字体大小
+            const baseFinalWidth = (predictedWidth > 0) ? predictedWidth : Math.max(800, originalImageWidth || 800);
+            let targetBlockWidth = Math.max(20, Math.min(Math.round(baseFinalWidth * (size / 100)), Math.round(baseFinalWidth * 0.5)));
+
+            const mainFontFinal = Math.max(10, Math.round(targetBlockWidth / 4.2));
+            const authorFontFinal = Math.max(8, Math.round(mainFontFinal * 0.45));
+            const iconFontFinal = Math.max(8, Math.round(mainFontFinal * 0.8));
+
+            // 将“最终图片的字体大小（像素）”转换为当前预览的显示像素
+            const displayScale = (baseFinalWidth > 0 && previewImage.clientWidth > 0) ? (previewImage.clientWidth / baseFinalWidth) : 1;
+            const mainSizeOnScreen = Math.max(12, Math.round(mainFontFinal * displayScale));
+            const authorSizeOnScreen = Math.max(8, Math.round(authorFontFinal * displayScale));
+            const iconSizeOnScreen = Math.max(8, Math.round(iconFontFinal * displayScale));
+
+            watermarkTitle.style.fontSize = `${mainSizeOnScreen}px`;
+            watermarkAuthor.style.fontSize = `${authorSizeOnScreen}px`;
+            if (watermarkIcon) watermarkIcon.style.fontSize = `${iconSizeOnScreen}px`;
+
             watermarkElement.style.opacity = opacity / 100;
             setWatermarkToPosition(position);
         }
