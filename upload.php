@@ -228,8 +228,7 @@ function addWatermark(
     $yRatio = null,
     $color = 'white',
     $authorStyle = 'default'
-)
-{
+) {
     error_log("开始添加文字/图标水印 - 源: $sourcePath, 目标: $destPath, 大小: $watermarkSize%, 透明度: $opacity%, 位置: $position");
 
     $scale = $originalWidth > 0 ? ($finalWidth / $originalWidth) : 1;
@@ -288,9 +287,11 @@ function addWatermark(
     // 字体查找（优先使用仓库内 TTF，否则回退到系统字体）
     $fontPath = null;
     $fontCandidates = [
-        __DIR__ . '/1755230823011393_dingliehuobanti.ttf',
+        __DIR__ . '/fonts/Montserrat-ExtraBold.ttf',
+        
         __DIR__ . '/fonts/arial.ttf',
         __DIR__ . '/fonts/msyh.ttf',
+
         '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         'C:/Windows/Fonts/arial.ttf',
@@ -298,14 +299,18 @@ function addWatermark(
         'C:/Windows/Fonts/seguisym.ttf'
     ];
     foreach ($fontCandidates as $c) {
-        if (file_exists($c) && is_readable($c)) { $fontPath = $c; break; }
+        if (file_exists($c) && is_readable($c)) {
+            $fontPath = $c;
+            break;
+        }
     }
 
     // 用于飞机图标的候选字体（尝试包含 U+2708 的字体）
     $planeChar = "✈";
+        $planeChar = "";
     $iconFontPath = null;
     $iconCandidates = [
-        __DIR__ . '/1755230823011393_dingliehuobanti.ttf',
+        __DIR__ . '/fonts/Montserrat-ExtraBold.ttf',
     ];
     if ($fontPath) {
         $iconCandidates[] = $fontPath; // 优先复用主文字字体，避免字符集不一致
@@ -316,8 +321,6 @@ function addWatermark(
             __DIR__ . '/fonts/fa-solid-900.ttf',
             '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
             '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-            'C:/Windows/Fonts/seguisym.ttf',
-            'C:/Windows/Fonts/arial.ttf'
         ]
     );
     $checkedFonts = [];
@@ -371,24 +374,42 @@ function addWatermark(
     } else {
         switch ($position) {
             case 'top-left':
-                $x = $margin; $y = $margin; break;
+                $x = $margin;
+                $y = $margin;
+                break;
             case 'top-center':
-                $x = (int)(($width - $blockW) / 2); $y = $margin; break;
+                $x = (int)(($width - $blockW) / 2);
+                $y = $margin;
+                break;
             case 'top-right':
-                $x = $width - $blockW - $margin; $y = $margin; break;
+                $x = $width - $blockW - $margin;
+                $y = $margin;
+                break;
             case 'middle-left':
-                $x = $margin; $y = (int)(($height - $blockH) / 2); break;
+                $x = $margin;
+                $y = (int)(($height - $blockH) / 2);
+                break;
             case 'middle-center':
-                $x = (int)(($width - $blockW) / 2); $y = (int)(($height - $blockH) / 2); break;
+                $x = (int)(($width - $blockW) / 2);
+                $y = (int)(($height - $blockH) / 2);
+                break;
             case 'middle-right':
-                $x = $width - $blockW - $margin; $y = (int)(($height - $blockH) / 2); break;
+                $x = $width - $blockW - $margin;
+                $y = (int)(($height - $blockH) / 2);
+                break;
             case 'bottom-left':
-                $x = $margin; $y = $height - $blockH - $margin; break;
+                $x = $margin;
+                $y = $height - $blockH - $margin;
+                break;
             case 'bottom-center':
-                $x = (int)(($width - $blockW) / 2); $y = $height - $blockH - $margin; break;
+                $x = (int)(($width - $blockW) / 2);
+                $y = $height - $blockH - $margin;
+                break;
             case 'bottom-right':
             default:
-                $x = $width - $blockW - $margin; $y = $height - $blockH - $margin; break;
+                $x = $width - $blockW - $margin;
+                $y = $height - $blockH - $margin;
+                break;
         }
     }
 
@@ -410,9 +431,9 @@ function addWatermark(
             imagettftext($image, $iconFontSize, 0, $iconX + 1, $iconY + 1, $colorShadow, $iconFontPath, $planeChar);
             imagettftext($image, $iconFontSize, 0, $iconX, $iconY, $colorMain, $iconFontPath, $planeChar);
         } else {
-            $triShadow = [$iconX + 1, $y + (int)($blockH/2) + 1, $iconX + (int)($iconW*0.7) + 1, $y + 1, $iconX + (int)($iconW*0.7) + 1, $y + $blockH - 1];
+            $triShadow = [$iconX + 1, $y + (int)($blockH / 2) + 1, $iconX + (int)($iconW * 0.7) + 1, $y + 1, $iconX + (int)($iconW * 0.7) + 1, $y + $blockH - 1];
             imagefilledpolygon($image, $triShadow, 3, $colorShadow);
-            $tri = [$iconX, $y + (int)($blockH/2), $iconX + (int)($iconW*0.7), $y, $iconX + (int)($iconW*0.7), $y + $blockH];
+            $tri = [$iconX, $y + (int)($blockH / 2), $iconX + (int)($iconW * 0.7), $y, $iconX + (int)($iconW * 0.7), $y + $blockH];
             imagefilledpolygon($image, $tri, 3, $colorMain);
         }
 
@@ -474,9 +495,9 @@ function addWatermark(
             imagettftext($wm, $iconFontSize, 0, 0 + 1, $iconH + 1, $wmShadow, $iconFontPath, $planeChar);
             imagettftext($wm, $iconFontSize, 0, 0, $iconH, $wmMain, $iconFontPath, $planeChar);
         } else {
-            $triShadow = [1, (int)($blockH/2) + 1, (int)($iconW*0.7) + 1, 1, (int)($iconW*0.7) + 1, $blockH - 1];
+            $triShadow = [1, (int)($blockH / 2) + 1, (int)($iconW * 0.7) + 1, 1, (int)($iconW * 0.7) + 1, $blockH - 1];
             imagefilledpolygon($wm, $triShadow, 3, $wmShadow);
-            $tri = [0, (int)($blockH/2), (int)($iconW*0.7), 0, (int)($iconW*0.7), $blockH];
+            $tri = [0, (int)($blockH / 2), (int)($iconW * 0.7), 0, (int)($iconW * 0.7), $blockH];
             imagefilledpolygon($wm, $tri, 3, $wmMain);
         }
 
@@ -515,7 +536,6 @@ function addWatermark(
         'scale_used' => $scale,
         'preview_watermark_path' => $wmPath
     ];
-
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
@@ -564,8 +584,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
             }
 
             // 新增：颜色与作者文字样式
-            $watermarkColor = (isset($_POST['watermark_color']) && in_array($_POST['watermark_color'], ['white','black'])) ? $_POST['watermark_color'] : 'white';
-            $watermarkAuthorStyle = (isset($_POST['watermark_author_style']) && in_array($_POST['watermark_author_style'], ['default','simple','bold'])) ? $_POST['watermark_author_style'] : 'default';
+            $watermarkColor = (isset($_POST['watermark_color']) && in_array($_POST['watermark_color'], ['white', 'black'])) ? $_POST['watermark_color'] : 'white';
+            $watermarkAuthorStyle = (isset($_POST['watermark_author_style']) && in_array($_POST['watermark_author_style'], ['default', 'simple', 'bold'])) ? $_POST['watermark_author_style'] : 'default';
 
             $filename = uniqid() . '_' . basename($_FILES['photo']['name']);
             $target_path = $upload_dir . $filename;
@@ -766,11 +786,12 @@ function getPositionText($positionCode)
     <style>
         @font-face {
             font-family: 'DingLie';
-            src: local('DingLie'), url('./1755230823011393_dingliehuobanti.ttf') format('truetype');
+            src: local('DingLie'), url('./fonts/Montserrat-ExtraBold.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
             font-display: swap;
         }
+
         :root {
             --primary: #165DFF;
             --primary-light: #4080FF;
@@ -1325,11 +1346,13 @@ function getPositionText($positionCode)
             align-items: center;
             justify-content: center;
             gap: 12px;
-            pointer-events: none; /* allow dragging the container */
+            pointer-events: none;
+            /* allow dragging the container */
         }
 
         .watermark-icon {
-            font-size: 36px; /* JS 会根据设置动态调整 */
+            font-size: 36px;
+            /* JS 会根据设置动态调整 */
             line-height: 1;
             pointer-events: none;
             font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'Arial Unicode MS', 'Segoe UI', sans-serif;
@@ -1353,16 +1376,59 @@ function getPositionText($positionCode)
         }
 
         /* 颜色选择与作者样式按钮 */
-        .color-options { display:flex; gap:10px; margin-top:6px; }
-        .color-option { width:34px; height:34px; border-radius:50%; border:3px solid transparent; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
-        .color-option.active { transform: scale(1.05); }
-        .color-option[data-color="white"].active { box-shadow: 0 0 0 3px rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.12); }
-        .color-option[data-color="black"].active { box-shadow: 0 0 0 3px rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.95); }
+        .color-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
 
-        .watermark-style-controls { display:flex; gap:10px; margin-top:8px; }
-        .style-btn { padding:6px 12px; border-radius:14px; border:1px solid #ddd; background:#fff; cursor:pointer; font-size:13px; }
-        .style-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-        .style-btn:focus { outline: none; }
+        .color-option {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .color-option.active {
+            transform: scale(1.05);
+        }
+
+        .color-option[data-color="white"].active {
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        .color-option[data-color="black"].active {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.95);
+        }
+
+        .watermark-style-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .style-btn {
+            padding: 6px 12px;
+            border-radius: 14px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .style-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .style-btn:focus {
+            outline: none;
+        }
 
         .drag-hint {
             margin-top: 8px;
@@ -1460,16 +1526,16 @@ function getPositionText($positionCode)
 
                             <div class="image-preview drag-preview" id="imagePreview">
                                 <div class="image-container-wrapper">
-                                        <div class="image-container" id="imageContainer">
-                                            <img id="previewImage" class="preview-image" src="" alt="图片预览">
-                                            <div id="watermarkElement">
-                                                <div class="watermark-icon-text">
-                                                    <span class="watermark-icon" aria-hidden="true">✈</span>
-                                                    <div class="watermark-text watermark-syphotos">syphotos</div>
-                                                </div>
-                                                <div class="watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
+                                    <div class="image-container" id="imageContainer">
+                                        <img id="previewImage" class="preview-image" src="" alt="图片预览">
+                                        <div id="watermarkElement">
+                                            <div class="watermark-icon-text">
+                                                <span class="watermark-icon" aria-hidden="true">✈</span>
+                                                <div class="watermark-text watermark-syphotos">syphotos</div>
                                             </div>
+                                            <div class="watermark-author" id="authorNameDisplay">@<?php echo htmlspecialchars($_SESSION['username'] ?? 'photographer'); ?></div>
                                         </div>
+                                    </div>
                                 </div>
                                 <div class="drag-hint">
                                     <i class="fas fa-hand-pointer"></i> 提示：可直接拖动水印，水印会限制在图片范围内
@@ -1737,22 +1803,22 @@ function getPositionText($positionCode)
                         <div>
                             <p><strong>允许平台在不另行通知的情况下使用此图片</strong></p>
                             <small>用途包括但不限于：网站首页展示、专题合集、社交媒体宣传等（将保留图片作者信息）。不同意此条款将无法完成上传。</small>
-                                                    </div>
+                        </div>
                     </div>
                 </div>
-            
+
                 <div class="rules-info">
                     <h3>
                         <i class="fas fa-info-circle"></i>
                         <a href="OurRule.pdf" target="_blank" style="color: var(--primary);">上传规则和要求</a>
                     </h3>
-                
 
-                <div class="form-actions">
-                    <button type="submit" class="btn">
-                        <i class="fas fa-paper-plane"></i> 提交上传
-                    </button>
-                </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn">
+                            <i class="fas fa-paper-plane"></i> 提交上传
+                        </button>
+                    </div>
         </form>
     </div>
     </div>
@@ -2071,7 +2137,7 @@ function getPositionText($positionCode)
                     console.warn('EXIF 识别失败:', data.error);
                     return;
                 }
-          
+
 
                 // ===== 3️⃣ 自动填表单 =====
                 fillIfEmpty('cameraModel', data.Model);
