@@ -38,7 +38,7 @@ class ExifService
         }
 
         $cmd = sprintf(
-            '%s -json -n %s',
+            '%s -json %s',
             escapeshellcmd($this->config['exiftool']),
             escapeshellarg($file['tmp_name'])
         );
