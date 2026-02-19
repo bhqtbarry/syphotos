@@ -2141,7 +2141,7 @@ function getPositionText($positionCode)
 
                 // ===== 3️⃣ 自动填表单 =====
                 fillIfEmpty('cameraModel', data.Model);
-                fillIfEmpty('lensModel', data.LensModel);
+                fillIfEmpty('lensModel', data.LensID);
                 fillIfEmpty('FocalLength', data.FocalLength);
                 fillIfEmpty('ISO', data.ISO);
                 fillIfEmpty('F', data.Aperture);
