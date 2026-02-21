@@ -8,29 +8,61 @@ if (isset($_SESSION['user_id'])) {
     // updateUserActivity($_SESSION['user_id']);
 }
 
-// 获取搜索关键词
+// 搜索与分页
 $search_keyword = isset($_GET['search']) ? trim($_GET['search']) : '';
+$photos_per_page = 12;
+$current_page = 1;
+$offset = 0;
+$error_message = '';
+$photos = [];
+$totalPhotos = 0;
+$total_pages = 1;
 
-// 构建查询语句
-$sql = "SELECT p.*, u.username FROM photos p 
-        JOIN users u ON p.user_id = u.id 
-        WHERE p.approved = 1";
-if ($search_keyword != '') {
-    $sql .= " AND (p.title LIKE :keyword OR u.username LIKE :keyword OR p.aircraft_model LIKE :keyword )";
+if (isset($_GET['page']) && is_numeric($_GET['page']) && $_GET['page'] > 0) {
+    $current_page = (int) $_GET['page'];
 }
-$sql .= " ORDER BY p.created_at DESC";
+
+$baseQuery = "FROM photos p JOIN users u ON p.user_id = u.id WHERE p.approved = 1";
+$searchClause = '';
+$params = [];
+
+if ($search_keyword !== '') {
+    $searchClause = " AND (p.title LIKE :keyword OR u.username LIKE :keyword OR p.aircraft_model LIKE :keyword)";
+    $params[':keyword'] = '%' . $search_keyword . '%';
+}
+
 try {
-    $stmt = $pdo->prepare($sql);
-    if ($search_keyword != '') {
-        $stmt->bindValue(':keyword', '%' . $search_keyword . '%');
+    // 获取总记录数
+    $countSql = "SELECT COUNT(*) " . $baseQuery . $searchClause;
+    $countStmt = $pdo->prepare($countSql);
+    $countStmt->execute($params);
+    $totalPhotos = (int) $countStmt->fetchColumn();
+
+    $total_pages = max(1, (int) ceil($totalPhotos / $photos_per_page));
+    if ($current_page > $total_pages) {
+        $current_page = $total_pages;
     }
-    $stmt->debugDumpParams();
+
+    $offset = ($current_page - 1) * $photos_per_page;
+
+    // 获取当前页数据
+    $dataSql = "SELECT p.*, u.username " . $baseQuery . $searchClause . " ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset";
+    $stmt = $pdo->prepare($dataSql);
+
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+
+    $stmt->bindValue(':limit', $photos_per_page, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    echo "获取图片失败: " . $e->getMessage();
-    exit;
+    $error_message = '获取图片失败: ' . $e->getMessage();
 }
+
+$display_start = $totalPhotos > 0 ? $offset + 1 : 0;
+$display_end = $totalPhotos > 0 ? $offset + count($photos) : 0;
 
 
 ?>
@@ -428,34 +460,49 @@ try {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 10px;
-            margin: 50px 0;
+            gap: 8px;
+            margin: 40px 0 60px;
         }
 
-        .pagination-link {
+        .pagination-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background-color: white;
+            color: var(--text-medium);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: white;
-            color: var(--text-medium);
             text-decoration: none;
-            transition: var(--transition);
             box-shadow: var(--card-shadow);
+            border: 1px solid var(--medium-gray);
+            transition: var(--transition);
+            font-weight: 500;
         }
 
-        .pagination-link:hover {
+        .pagination-btn:hover {
             background-color: var(--primary);
             color: white;
-            transform: translateY(-3px);
+            border-color: var(--primary);
+            transform: translateY(-2px);
         }
 
-        .pagination-link.active {
+        .pagination-btn.active {
             background-color: var(--primary);
             color: white;
-            font-weight: bold;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+        }
+
+        .pagination-btn.disabled {
+            pointer-events: none;
+            opacity: 0.4;
+            box-shadow: none;
+        }
+
+        .pagination-ellipsis {
+            color: var(--text-light);
+            padding: 0 4px;
         }
 
         .footer {
@@ -663,7 +710,7 @@ try {
                 grid-template-columns: 1fr;
             }
 
-            .pagination-link {
+            .pagination-btn {
                 width: 35px;
                 height: 35px;
                 font-size: 0.9rem;
@@ -717,100 +764,111 @@ try {
     <div class="container">
 
 
-        <?php
-        try {
+        <?php if (!empty($error_message)): ?>
+            <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: var(--border-radius); margin-bottom: 30px;">
+                <?php echo htmlspecialchars($error_message, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        <?php else: ?>
+            <div class="results-count fade-in">
+                <?php if ($totalPhotos > 0): ?>
+                    找到 <?php echo $totalPhotos; ?> 张符合条件的照片，当前显示第 <?php echo $display_start; ?> - <?php echo $display_end; ?> 张（第 <?php echo $current_page; ?> / <?php echo $total_pages; ?> 页）
+                <?php else: ?>
+                    暂无符合条件的照片
+                <?php endif; ?>
+            </div>
 
-            // 构建查询
-            $sql = "
-SELECT p.*, u.username
-FROM photos p
-JOIN users u ON p.user_id = u.id
-WHERE p.approved = 1
-";
+            <?php if (!empty($photos)): ?>
+                <div class="photo-grid">
+                    <?php
+                    $counter = 0;
+                    foreach ($photos as $photo):
+                        $counter++;
+                        $delay = ($counter % 6) * 0.1;
+                    ?>
+                        <div class="photo-item fade-in" style="transition-delay: <?php echo number_format($delay, 1); ?>s">
+                            <span class="photo-category"><?php echo htmlspecialchars($photo['category']); ?></span>
+                            <a href="photo_detail.php?id=<?php echo (int) $photo['id']; ?>">
+                                <div class="photo-img-container">
+                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
+                                         alt="<?php echo htmlspecialchars($photo['title']); ?>"
+                                         loading="lazy">
+                                </div>
+                            </a>
+                            <div class="photo-info">
+                                <h3 class="photo-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
+                                <div class="photo-meta">
+                                    <span><i class="fas fa-user"></i> 作者: <?php echo htmlspecialchars($photo['username']); ?></span>
+                                    <span><i class="fas fa-plane"></i> 型号: <?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
+                                    <span><i class="fas fa-calendar-alt"></i> 日期: <?php echo date('Y-m-d', strtotime($photo['created_at'])); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <div class="no-results fade-in">
+                    <i class="fas fa-search"></i>
+                    <h3>未找到符合条件的图片</h3>
+                    <p>尝试调整筛选条件，或者浏览其他类别的航空摄影作品。</p>
+                    <a href="all_photos.php" class="btn" style="margin-top: 20px;"><i class="fas fa-th"></i> 查看全部图片</a>
+                </div>
+            <?php endif; ?>
 
-            $params = [];
+            <?php if ($total_pages > 1): ?>
+                <div class="pagination">
+                    <?php
+                        $base_params = [];
+                        if ($search_keyword !== '') {
+                            $base_params['search'] = $search_keyword;
+                        }
+                        $prev_params = $base_params;
+                        $prev_params['page'] = $current_page - 1;
+                    ?>
+                    <a href="<?php echo $current_page <= 1 ? '#' : 'all_photos.php?' . http_build_query($prev_params); ?>"
+                       class="pagination-btn <?php echo $current_page <= 1 ? 'disabled' : ''; ?>">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
 
-            if ($search_keyword !== '') {
-                $sql .= " AND (
-        p.title LIKE :keyword
-        OR u.username LIKE :keyword
-        OR p.aircraft_model LIKE :keyword
-    )";
-                $params[':keyword'] = '%' . $search_keyword . '%';
-            }
+                    <?php
+                        $start_page = max(1, $current_page - 2);
+                        $end_page = min($total_pages, $current_page + 2);
 
-            $sql .= " ORDER BY p.created_at DESC";
+                        if ($start_page > 1) {
+                            $first_params = $base_params;
+                            $first_params['page'] = 1;
+                            echo '<a href="all_photos.php?' . http_build_query($first_params) . '" class="pagination-btn">1</a>';
+                            if ($start_page > 2) {
+                                echo '<span class="pagination-ellipsis">...</span>';
+                            }
+                        }
 
-            // 查询图片
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        for ($i = $start_page; $i <= $end_page; $i++) {
+                            $page_params = $base_params;
+                            $page_params['page'] = $i;
+                            $active_class = $i === $current_page ? ' active' : '';
+                            echo '<a href="all_photos.php?' . http_build_query($page_params) . '" class="pagination-btn' . $active_class . '">' . $i . '</a>';
+                        }
 
-            // 查询总数（去掉 ORDER BY）
-            $countSql = "
-SELECT COUNT(*)
-FROM photos p
-JOIN users u ON p.user_id = u.id
-WHERE p.approved = 1
-";
+                        if ($end_page < $total_pages) {
+                            if ($end_page < $total_pages - 1) {
+                                echo '<span class="pagination-ellipsis">...</span>';
+                            }
+                            $last_params = $base_params;
+                            $last_params['page'] = $total_pages;
+                            echo '<a href="all_photos.php?' . http_build_query($last_params) . '" class="pagination-btn">' . $total_pages . '</a>';
+                        }
 
-            if ($search_keyword !== '') {
-                $countSql .= " AND (
-        p.title LIKE :keyword
-        OR u.username LIKE :keyword
-        OR p.aircraft_model LIKE :keyword
-    )";
-            }
+                        $next_params = $base_params;
+                        $next_params['page'] = $current_page + 1;
+                    ?>
 
-            $countStmt = $pdo->prepare($countSql);
-            $countStmt->execute($params);
-            $totalPhotos = $countStmt->fetchColumn();
-
-            echo '<div class="results-count fade-in">找到 ' . $totalPhotos . ' 张符合条件的照片</div>';
-
-
-            if (count($photos) > 0) {
-                echo '<div class="photo-grid">';
-
-                $counter = 0;
-                foreach ($photos as $photo) {
-                    $counter++;
-                    // 为每个图片项添加延迟出现的效果
-                    $delay = ($counter % 6) * 0.1;
-                    echo '<div class="photo-item fade-in" style="transition-delay: ' . $delay . 's">';
-                    echo '<span class="photo-category">' . htmlspecialchars($photo['category']) . '</span>';
-                    echo '<a href="photo_detail.php?id=' . $photo['id'] . '">';
-                    echo '<div class="photo-img-container">';
-                    echo '<img src="uploads/' . htmlspecialchars($photo['filename']) . '" alt="' . htmlspecialchars($photo['title']) . '" loading="lazy">';
-                    echo '</div>';
-                    echo '</a>';
-                    echo '<div class="photo-info">';
-                    echo '<h3 class="photo-title">' . htmlspecialchars($photo['title']) . '</h3>';
-                    echo '<div class="photo-meta">';
-                    echo '<span><i class="fas fa-user"></i> 作者: ' . htmlspecialchars($photo['username']) . '</span>';
-                    echo '<span><i class="fas fa-plane"></i> 型号: ' . htmlspecialchars($photo['aircraft_model']) . '</span>';
-                    echo '<span><i class="fas fa-calendar-alt"></i> 日期: ' . date('Y-m-d', strtotime($photo['created_at'])) . '</span>';
-                    echo '</div>';
-                    echo '</div>';
-                    echo '</div>';
-                }
-
-                echo '</div>';
-            } else {
-                // 没有找到结果
-                echo '<div class="no-results fade-in">';
-                echo '<i class="fas fa-search"></i>';
-                echo '<h3>未找到符合条件的图片</h3>';
-                echo '<p>尝试调整筛选条件，或者浏览其他类别的航空摄影作品。</p>';
-                echo '<a href="all_photos.php" class="btn" style="margin-top: 20px;"><i class="fas fa-th"></i> 查看全部图片</a>';
-                echo '</div>';
-            }
-        } catch (PDOException $e) {
-            echo '<div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: var(--border-radius); margin-bottom: 30px;">';
-            echo '获取图片失败: ' . $e->getMessage();
-            echo '</div>';
-        }
-        ?>
+                    <a href="<?php echo $current_page >= $total_pages ? '#' : 'all_photos.php?' . http_build_query($next_params); ?>"
+                       class="pagination-btn <?php echo $current_page >= $total_pages ? 'disabled' : ''; ?>">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
 
         
     </div>
