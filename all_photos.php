@@ -8,14 +8,31 @@ if (isset($_SESSION['user_id'])) {
     // updateUserActivity($_SESSION['user_id']);
 }
 
-// 获取所有可用分类
-$categories = [];
-try {
-    $stmt = $pdo->query("SELECT DISTINCT category FROM photos WHERE approved = 1 ORDER BY category");
-    $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
-} catch (PDOException $e) {
-    // 分类获取失败不影响页面主体功能
+// 获取搜索关键词
+$search_keyword = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// 构建查询语句
+$sql = "SELECT p.*, u.username FROM photos p 
+        JOIN users u ON p.user_id = u.id 
+        WHERE p.approved = 1";
+if ($search_keyword != '') {
+    $sql .= " AND (p.title LIKE :keyword OR u.username LIKE :keyword OR p.aircraft_model LIKE :keyword )";
 }
+$sql .= " ORDER BY p.created_at DESC";
+try {
+    $stmt = $pdo->prepare($sql);
+    if ($search_keyword != '') {
+        $stmt->bindValue(':keyword', '%' . $search_keyword . '%');
+    }
+    $stmt->debugDumpParams();
+    $stmt->execute();
+    $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    echo "获取图片失败: " . $e->getMessage();
+    exit;
+}
+
+
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -23,7 +40,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horizon Photos - 全部图片</title>
+    <title>SY Photos - 全部图片</title>
     <style>
         :root {
             --primary: #165DFF;
@@ -674,82 +691,83 @@ try {
 
     <div class="page-header">
         <div class="container header-content">
-            <h1 class="page-title">全部航空摄影作品</h1>
-            <p class="page-description">浏览和探索所有精选的航空摄影作品，发现天空中的精彩瞬间</p>
+
+
         </div>
     </div>
 
     <div class="container">
-        <div class="filter-container fade-in">
-            <div class="filter-header">
-                <h2 class="filter-title">筛选作品</h2>
-            </div>
-            <form method="get" action="all_photos.php" class="filter-form">
-                <div class="form-group">
-                    <label for="category" class="form-label">分类</label>
-                    <select name="category" id="category" class="form-control">
-                        <option value="">全部</option>
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?php echo htmlspecialchars($category); ?>"
-                                <?php echo isset($_GET['category']) && $_GET['category'] == $category ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($category); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+        <div class="search-container fade-in">
+            <!-- 搜索框上方添加标题 -->
+            <div class="search-header">SY Photos - 收藏每片云端照片</div>
 
-                <div class="form-group">
-                    <label for="sort" class="form-label">排序方式</label>
-                    <select name="sort" id="sort" class="form-control">
-                        <option value="newest" <?php echo (!isset($_GET['sort']) || $_GET['sort'] == 'newest') ? 'selected' : ''; ?>>最新上传</option>
-                        <option value="oldest" <?php echo isset($_GET['sort']) && $_GET['sort'] == 'oldest' ? 'selected' : ''; ?>>最早上传</option>
-                    </select>
-                </div>
-
-                <div class="form-group" style="display: flex; align-items: flex-end; gap: 10px;">
-                    <button type="submit" class="btn"><i class="fas fa-filter"></i> 筛选</button>
-                    <?php if (!empty($_GET)): ?>
-                        <a href="all_photos.php" class="btn btn-reset"><i class="fas fa-times"></i> 重置</a>
-                    <?php endif; ?>
-                </div>
+            <form action="all_photos.php" method="GET" class="search-form">
+                <input type="text" name="search" class="search-input"
+                    placeholder="搜索图片（支持标题、作者、机型、拍摄地点）"
+                    value="<?php echo htmlspecialchars($search_keyword ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                <button type="submit" class="search-btn">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
             </form>
+            <p class="search-hint">示例：748、PEK、摄影师小李</p>
         </div>
+    </div>
+
+
+    <div class="container">
+
 
         <?php
         try {
-            // 构建查询语句
-            $sql = "SELECT p.*, u.username FROM photos p 
-                   JOIN users u ON p.user_id = u.id 
-                   WHERE p.approved = 1";
+
+            // 构建查询
+            $sql = "
+SELECT p.*, u.username
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.approved = 1
+";
 
             $params = [];
-            // 分类筛选
-            if (isset($_GET['category']) && !empty($_GET['category'])) {
-                $sql .= " AND p.category = :category";
-                $params[':category'] = $_GET['category'];
+
+            if ($search_keyword !== '') {
+                $sql .= " AND (
+        p.title LIKE :keyword
+        OR u.username LIKE :keyword
+        OR p.aircraft_model LIKE :keyword
+    )";
+                $params[':keyword'] = '%' . $search_keyword . '%';
             }
 
-            // 排序方式
-            $sort = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
-            if ($sort == 'oldest') {
-                $sql .= " ORDER BY p.created_at ASC";
-            } else {
-                $sql .= " ORDER BY p.created_at DESC";
+            $sql .= " ORDER BY p.created_at DESC";
+
+            // 查询图片
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // 查询总数（去掉 ORDER BY）
+            $countSql = "
+SELECT COUNT(*)
+FROM photos p
+JOIN users u ON p.user_id = u.id
+WHERE p.approved = 1
+";
+
+            if ($search_keyword !== '') {
+                $countSql .= " AND (
+        p.title LIKE :keyword
+        OR u.username LIKE :keyword
+        OR p.aircraft_model LIKE :keyword
+    )";
             }
 
-            // 先获取总数用于显示
-            $countSql = "SELECT COUNT(*) FROM (" . $sql . ") as count_query";
             $countStmt = $pdo->prepare($countSql);
             $countStmt->execute($params);
             $totalPhotos = $countStmt->fetchColumn();
 
             echo '<div class="results-count fade-in">找到 ' . $totalPhotos . ' 张符合条件的照片</div>';
 
-            // 执行查询获取图片
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-
-            $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             if (count($photos) > 0) {
                 echo '<div class="photo-grid">';
@@ -793,9 +811,11 @@ try {
             echo '</div>';
         }
         ?>
+
+        
     </div>
 
-  <?php include __DIR__ . '/src/footer.php'; ?>
+    <?php include __DIR__ . '/src/footer.php'; ?>
 
     <!-- 返回顶部按钮 -->
     <div class="back-to-top" id="backToTop">

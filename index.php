@@ -23,12 +23,21 @@ $approved_photos_count = getApprovedPhotosCount();
 // 获取精选图片（用于轮播）
 $featured_photos = [];
 try {
-    $stmt = $pdo->prepare("SELECT p.*, u.username 
+    $stmt = $pdo->prepare("with t as 
+(SELECT p.*, u.username 
                           FROM photos p 
                           INNER JOIN users u ON p.user_id = u.id 
-                          WHERE p.approved = 1 AND p.is_featured = 1
-                          ORDER BY p.created_at DESC 
-                          LIMIT 5"); // 最多5张精选图片用于轮播
+                          WHERE p.approved = 1 AND (p.is_featured = 1 or score =5)
+                          ORDER BY p.created_at desc
+                          LIMIT 2)
+                          select * from t
+                          union all(
+SELECT p.*, u.username 
+                          FROM photos p 
+                          INNER JOIN users u ON p.user_id = u.id 
+                          WHERE p.approved = 1 AND (p.is_featured = 1 or score =5) and p.id not in (select id from t)
+                          ORDER BY RAND()
+                          LIMIT 3)"); // 最多5张精选图片用于轮播
     $stmt->execute();
     $featured_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -46,21 +55,21 @@ $search_error = '';
 if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
     $search_keyword = trim($_GET['search']);
     try {
-        $search_stmt = $pdo->prepare("SELECT p.*, u.username 
+        $search_stmt = $pdo->prepare("
+(SELECT p.*, u.username 
                                     FROM photos p 
                                     INNER JOIN users u ON p.user_id = u.id 
-                                    WHERE p.approved = 1 
-                                    AND (
-                                        p.title LIKE :keyword OR 
-                                        u.username LIKE :keyword OR 
-                                        p.aircraft_model LIKE :keyword OR 
-                                        p.拍摄地点 LIKE :keyword
-                                    )
+                                    WHERE p.approved = 1 and score >=4                          
                                     ORDER BY p.created_at DESC 
-                                    LIMIT :limit");
-        $search_param = "%{$search_keyword}%";
-        $search_stmt->bindValue(':keyword', $search_param, PDO::PARAM_STR);
-        $search_stmt->bindValue(':limit', $total_display, PDO::PARAM_INT);
+                                    LIMIT 9)
+                                    union all
+                                    (SELECT p.*, u.username 
+                                    FROM photos p 
+                                    INNER JOIN users u ON p.user_id = u.id 
+                                    WHERE p.approved = 1 and score =3                        
+                                    ORDER BY rand()
+                                    LIMIT 3 )");
+
         $search_stmt->execute();
         $display_photos = $search_stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -75,13 +84,20 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
 } else {
     // 无搜索时，默认加载最新通过的图片
     try {
-        $stmt = $pdo->prepare("SELECT p.*, u.username 
-                              FROM photos p 
-                              INNER JOIN users u ON p.user_id = u.id 
-                              WHERE p.approved = 1 
-                              ORDER BY p.created_at DESC 
-                              LIMIT :limit");
-        $stmt->bindValue(':limit', $total_display, PDO::PARAM_INT);
+        $stmt = $pdo->prepare("(SELECT p.*, u.username 
+                                    FROM photos p 
+                                    INNER JOIN users u ON p.user_id = u.id 
+                                    WHERE p.approved = 1 and score >=4                          
+                                    ORDER BY p.created_at DESC 
+                                    LIMIT 9)
+                                    union all
+                                    (SELECT p.*, u.username 
+                                    FROM photos p 
+                                    INNER JOIN users u ON p.user_id = u.id 
+                                    WHERE p.approved = 1 and score =3                        
+                                    ORDER BY rand()
+                                    LIMIT 3 )");
+
         $stmt->execute();
         $display_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -100,7 +116,7 @@ $online_admin_names = getOnlineAdminNames();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horizon Photos - 首页</title>
+    <title>SY Photos - 首页</title>
     <style>
         :root {
             --primary: #165DFF;
@@ -1343,8 +1359,8 @@ $online_admin_names = getOnlineAdminNames();
     <div class="nav" id="mainNav">
         <div class="container nav-container">
             <a href="index.php" class="logo">
-                <img src="8.jpg" alt="Horizon Photos">
-                <span class="logo-text">Horizon Photos</span>
+                <img src="8.jpg" alt="SY Photos">
+                <!-- <span class="logo-text">SY Photos</span> -->
             </a>
 
             <!-- 移动端菜单按钮 -->
@@ -1384,7 +1400,7 @@ $online_admin_names = getOnlineAdminNames();
                                 <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
                                     <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
                                         alt="<?php echo htmlspecialchars($photo['title']); ?>">
-                                    <span class="featured-badge">精选作品</span>
+                                    <span class="featured-badge">本站精选</span>
                                 </a>
                                 <div class="carousel-caption">
                                     <h3 class="carousel-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
@@ -1421,12 +1437,12 @@ $online_admin_names = getOnlineAdminNames();
     <div class="container">
         <div class="search-container fade-in">
             <!-- 搜索框上方添加标题 -->
-            <div class="search-header">Horizon Photos - 收藏每片云端照片</div>
+            <div class="search-header">SY Photos - 收藏每片云端照片</div>
 
-            <form action="index.php" method="GET" class="search-form">
+            <form action="all_photos.php" method="GET" class="search-form">
                 <input type="text" name="search" class="search-input"
                     placeholder="搜索图片（支持标题、作者、机型、拍摄地点）"
-                    value="<?php echo htmlspecialchars($search_keyword); ?>">
+                    value="<?php echo htmlspecialchars($search_keyword ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 <button type="submit" class="search-btn">
                     <i class="fas fa-search"></i> 搜索
                 </button>
@@ -1550,7 +1566,7 @@ $online_admin_names = getOnlineAdminNames();
     </div>
 
     <!-- 页脚 -->
-<?php include __DIR__ . '/src/footer.php'; ?>
+    <?php include __DIR__ . '/src/footer.php'; ?>
 
     <!-- 返回顶部按钮 -->
     <div class="back-to-top" id="backToTop">

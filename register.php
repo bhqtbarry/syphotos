@@ -62,7 +62,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Horizon Photos - 注册</title>
+    <title>SY Photos - 注册</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f7ff; }
         .nav { background-color: #165DFF; padding: 10px; margin-bottom: 20px; }

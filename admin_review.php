@@ -46,11 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             try {
                 $stmt = $pdo->prepare("UPDATE photos SET 
                                     approved = 1, 
+                                    score = :score,
                                     rejection_reason = NULL,
                                     reviewer_id = IFNULL(reviewer_id, :reviewer_id)
                                     WHERE id = :id");
                 $stmt->bindParam(':reviewer_id', $current_admin_id);
                 $stmt->bindParam(':id', $photo_id);
+                $score = $_POST['score'] ?? 0;
+                $stmt->bindParam(':score', $score, PDO::PARAM_INT);
                 $stmt->execute();
                 $success = '图片已通过审核';
             } catch (PDOException $e) {
@@ -257,7 +260,7 @@ if (isset($_GET['success'])) $success = $_GET['success'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horizon Photos - 管理员后台</title>
+    <title>SY Photos - 管理员后台</title>
     <script src="https://cdn.tailwindcss.com"></script>
 
 
@@ -656,9 +659,7 @@ if (isset($_GET['success'])) $success = $_GET['success'];
 
                                 <!-- 上传者信息 -->
                                 <div class="flex items-center mb-4">
-                                    <img src="https://picsum.photos/seed/<?php echo $current_photo['user_id']; ?>/100"
-                                        alt="<?php echo htmlspecialchars($current_photo['uploader_username']); ?>"
-                                        class="w-8 h-8 rounded-full border border-gray-200">
+
                                     <span class="ml-2 text-sm text-gray-600">
                                         上传者: <?php echo htmlspecialchars($current_photo['uploader_username']); ?>
                                     </span>
@@ -698,7 +699,7 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                                         <span class="info-label">审核员:</span>
                                         <span class="text-gray-800"><?php echo htmlspecialchars($current_photo['reviewer_username'] ?? '未分配'); ?></span>
                                     </div>
-                                    <li  class="flex">
+                                    <li class="flex">
                                         <span class="info-label">相机</span>
                                         <span class="text-gray-800"><?php echo !empty($current_photo['Cam']) ? htmlspecialchars($current_photo['Cam']) : '未填写'; ?></span>
                                     </li>
@@ -773,145 +774,161 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                             elseif ($active_tab == 'my-grabbed') echo '我的抢单审核';
                             else echo '申诉处理操作';
                             ?>
-                        </h3>
+                            <?php
+                            echo '<br>审核宗旨：精选图片5分，没问题的图片4分，艺术感不够图片3分，手机品质2分，座机品质1分，军机和不是飞机的拒绝'
+                            ?>
 
-                        <!-- 待抢单标签：显示抢单按钮 + 直接审核 -->
-                        <?php if ($active_tab == 'pending'): ?>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                                <!-- 抢单表单 -->
-                                <form method="post" action="admin_review.php">
-                                    <input type="hidden" name="photo_id" value="<?php echo $current_photo['id']; ?>">
-                                    <button type="submit" name="grab_review" class="btn-action bg-warning text-white shadow-md hover:bg-warning/90 focus:ring-warning w-full">
-                                        <i class="fa fa-hand-paper-o mr-2"></i> 抢单审核
-                                    </button>
-                                </form>
-                                <!-- 直接通过（无需抢单） -->
-                                <form method="post" action="admin_review.php">
-                                    <input type="hidden" name="photo_id" value="<?php echo $current_photo['id']; ?>">
-                                    <button type="submit" name="approve" class="btn-action bg-success text-white shadow-md hover:bg-success/90 focus:ring-success w-full">
-                                        <i class="fa fa-check-circle mr-2"></i> 直接通过
-                                    </button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- 拒绝/申诉处理表单（带快速理由选择） -->
-                        <form method="post" action="admin_review.php" id="reviewForm">
-                            <input type="hidden" name="photo_id" value="<?php echo $current_photo['id']; ?>">
-                            <?php if ($active_tab == 'appeal' && $current_photo['appeal_id']): ?>
-                                <input type="hidden" name="appeal_id" value="<?php echo $current_photo['appeal_id']; ?>">
+                            <!-- 待抢单标签：显示抢单按钮 + 直接审核 -->
+                            <?php if ($active_tab == 'pending'): ?>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                                    <!-- 抢单表单 -->
+                                    <form method="post" action="admin_review.php">
+                                        <input type="hidden" name="photo_id" value="<?php echo $current_photo['id']; ?>">
+                                        <button type="submit" name="grab_review" class="btn-action bg-warning text-white shadow-md hover:bg-warning/90 focus:ring-warning w-full">
+                                            <i class="fa fa-hand-paper-o mr-2"></i> 抢单审核
+                                        </button>
+                                    </form>
+                                    <!-- 直接通过（无需抢单） 
+                                    <form method="post" action="admin_review.php">
+                                        <input type="hidden" name="photo_id" value="<?php echo $current_photo['id']; ?>">
+                                        <button type="submit" name="approve" class="btn-action bg-success text-white shadow-md hover:bg-success/90 focus:ring-success w-full">
+                                            <i class="fa fa-check-circle mr-2"></i> 直接通过
+                                        </button>
+                                    </form> -->
+                                </div>
                             <?php endif; ?>
 
-                            <!-- 快速理由选择（保留原航空相关理由） -->
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    <?php
-                                    if ($active_tab == 'appeal') echo '快速选择申诉处理理由（可多选）';
-                                    else echo '快速选择拒绝理由（可多选）';
-                                    ?>
-                                </label>
-                                <select id="quickReason" multiple
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                                    onchange="fillReason()">
-                                    <option value="">请选择（可选，可多选）</option>
-                                    <option value="水印遮挡">水印遮挡</option>
-                                    <option value="热变形">热变形</option>
-                                    <option value="脏点">脏点</option>
-                                    <option value="偏上/偏下/偏左/偏右">构图偏移（偏上/偏下/偏左/偏右）</option>
-                                    <option value="对比度不适宜">对比度不适宜</option>
-                                    <option value="锐度不佳">锐度不佳</option>
-                                    <option value="尺寸问题">尺寸问题</option>
-                                    <option value="噪点过多">噪点过多</option>
-                                    <option value="过度处理">过度处理</option>
-                                    <option value="遮挡">遮挡</option>
-                                    <option value="暗角">暗角</option>
-                                    <option value="注册号错误">注册号错误</option>
-                                    <option value="机型信息错误">机型信息错误</option>
-                                    <option value="标题不符合要求">标题不符合航空主题</option>
-                                    <option value="图片不符合要求">图片不符合航空主题</option>
-                                    <option value="机型无后缀">机型无后缀（如Boeing 737-800）</option>
-                                    <option value="缺少制造商">缺少制造商（如Airbus、Boeing）</option>
-                                    <option value="太模糊">太模糊</option>
-                                    <option value="逆光/过曝">逆光/过曝</option>
-                                    <option value="地平线不正">地平线不正</option>
-                                    <option value="颜色/亮度不佳">颜色/亮度不佳</option>
-                                    <option value="重复上传">重复上传</option>
-                                </select>
-                            </div>
-
-                            <!-- 详细理由输入框 -->
-                            <div class="mb-5">
-                                <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
-                                    <?php
-                                    if ($active_tab == 'appeal') echo '申诉处理理由（拒绝时必填）';
-                                    else echo '拒绝理由（必填）';
-                                    ?>
-                                </label>
-                                <textarea id="reason" name="<?php echo $active_tab == 'appeal' ? 'appeal_reason' : 'reason'; ?>" rows="3"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                                    placeholder="<?php
-                                                    if ($active_tab == 'appeal') echo '拒绝申诉请说明理由，通过则可不填...';
-                                                    else echo '请输入拒绝理由，快速选择后可补充...';
-                                                    ?>"></textarea>
-                            </div>
-
-                            <!-- 管理员留言（可选） -->
-                            <div class="mb-6">
-                                <label for="admin_comment" class="block text-sm font-medium text-gray-700 mb-2">管理员留言（可选，给用户的建议）</label>
-                                <textarea id="admin_comment" name="admin_comment" rows="2"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                                    placeholder="例如：建议调整图片亮度，补充完整机型信息（如Airbus A320neo）后重新上传..."></textarea>
-                            </div>
-
-                            <!-- 操作按钮（根据标签显示不同按钮） -->
-                            <div class="flex flex-wrap gap-4 justify-between">
-                                <?php if ($active_tab == 'appeal'): ?>
-                                    <!-- 申诉处理按钮 -->
-                                    <div class="flex gap-4">
-                                        <button type="submit" name="appeal_review" value="approve"
-                                            class="btn-action bg-success text-white shadow-md hover:bg-success/90 focus:ring-success">
-                                            <i class="fa fa-check-circle mr-2"></i> 通过申诉
-                                        </button>
-                                        <button type="submit" name="appeal_review" value="reject"
-                                            class="btn-action bg-danger text-white shadow-md hover:bg-danger/90 focus:ring-danger">
-                                            <i class="fa fa-times-circle mr-2"></i> 拒绝申诉
-                                        </button>
-                                    </div>
-                                <?php else: ?>
-                                    <!-- 普通审核按钮 -->
-                                    <button type="submit" name="approve"
-                                        class="btn-action bg-success text-white shadow-md hover:bg-success/90 focus:ring-success">
-                                        <i class="fa fa-check-circle mr-2"></i> 通过审核
-                                    </button>
-                                    <button type="submit" name="reject"
-                                        class="btn-action bg-danger text-white shadow-md hover:bg-danger/90 focus:ring-danger">
-                                        <i class="fa fa-times-circle mr-2"></i> 拒绝审核
-                                    </button>
+                            <!-- 拒绝/申诉处理表单（带快速理由选择） -->
+                            <form method="post" action="admin_review.php" id="reviewForm">
+                                <input type="hidden" name="photo_id" value="<?php echo $current_photo['id']; ?>">
+                                <?php if ($active_tab == 'appeal' && $current_photo['appeal_id']): ?>
+                                    <input type="hidden" name="appeal_id" value="<?php echo $current_photo['appeal_id']; ?>">
                                 <?php endif; ?>
 
-                                <!-- 跳过按钮 -->
-                                <button type="button"
-                                    class="btn-action border border-gray-300 text-gray-700 hover:bg-gray-50"
-                                    onclick="window.location='admin_review.php?tab=<?php echo $active_tab; ?>&page=<?php echo $page; ?>'">
-                                    <i class="fa fa-arrow-right mr-2"></i> 跳过
-                                </button>
-                            </div>
-                        </form>
 
-                        <!-- 快捷备注按钮（参考铁路页面） -->
-                        <div class="mt-6 pt-6 border-t border-gray-100">
-                            <h4 class="text-sm font-semibold text-gray-700 mb-3">快捷备注</h4>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                                    data-text="图片清晰，机型/注册号信息完整，符合航空主题">主题合格</button>
-                                <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                                    data-text="图片模糊，细节不清晰，不符合发布标准">图片模糊</button>
-                                <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                                    data-text="机型/注册号信息缺失，需补充后重新上传">信息缺失</button>
-                                <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                                    data-text="内容与航空无关，不符合平台主题要求">无关内容</button>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">评分（必选）</label>
+                                    <select id="score" name="score"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" required>
+                                        
+                                        <option value="5">5分 - 精选图片</option>
+                                        <option value="4" selected = 'true' >4分 - 完美的图片 </option>
+                                        <option value="3">3分 - 不完美的图片</option>
+                                        <option value="2">2分 - 手机品质</option>
+                                        <option value="1">1分 - 座机品质</option>                                  
+                                    </select>
+                                </div>
+
+
+                                <!-- <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        <php
+                                        if ($active_tab == 'appeal') echo '快速选择申诉处理理由（可多选）';
+                                        else echo '快速选择拒绝理由（可多选）';
+                                        ?>
+                                    </label>
+                                    <select id="quickReason" multiple
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                                        onchange="fillReason()">
+                                        <option value="">请选择（可选，可多选）</option>
+                                        <option value="水印遮挡">水印遮挡</option>
+                                        <option value="热变形">热变形</option>
+                                        <option value="脏点">脏点</option>
+                                        <option value="偏上/偏下/偏左/偏右">构图偏移（偏上/偏下/偏左/偏右）</option>
+                                        <option value="对比度不适宜">对比度不适宜</option>
+                                        <option value="锐度不佳">锐度不佳</option>
+                                        <option value="尺寸问题">尺寸问题</option>
+                                        <option value="噪点过多">噪点过多</option>
+                                        <option value="过度处理">过度处理</option>
+                                        <option value="遮挡">遮挡</option>
+                                        <option value="暗角">暗角</option>
+                                        <option value="注册号错误">注册号错误</option>
+                                        <option value="机型信息错误">机型信息错误</option>
+                                        <option value="标题不符合要求">标题不符合航空主题</option>
+                                        <option value="图片不符合要求">图片不符合航空主题</option>
+                                        <option value="机型无后缀">机型无后缀（如Boeing 737-800）</option>
+                                        <option value="缺少制造商">缺少制造商（如Airbus、Boeing）</option>
+                                        <option value="太模糊">太模糊</option>
+                                        <option value="逆光/过曝">逆光/过曝</option>
+                                        <option value="地平线不正">地平线不正</option>
+                                        <option value="颜色/亮度不佳">颜色/亮度不佳</option>
+                                        <option value="重复上传">重复上传</option>
+                                    </select>
+                                </div> -->
+
+                                <!-- 详细理由输入框 -->
+                                <div class="mb-5">
+                                    <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">
+                                        <?php
+                                        if ($active_tab == 'appeal') echo '申诉处理理由（拒绝时必填）';
+                                        else echo '拒绝理由（必填）';
+                                        ?>
+                                    </label>
+                                    <textarea id="reason" name="<?php echo $active_tab == 'appeal' ? 'appeal_reason' : 'reason'; ?>" rows="3"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                                        placeholder="<?php
+                                                        if ($active_tab == 'appeal') echo '拒绝申诉请说明理由，通过则可不填...';
+                                                        else echo '请输入拒绝理由，快速选择后可补充...';
+                                                        ?>"></textarea>
+                                </div>
+
+                                <!-- 管理员留言（可选） -->
+                                <div class="mb-6">
+                                    <label for="admin_comment" class="block text-sm font-medium text-gray-700 mb-2">管理员留言（可选，给用户的建议）</label>
+                                    <textarea id="admin_comment" name="admin_comment" rows="2"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                                        placeholder="例如：建议调整图片亮度，补充完整机型信息（如Airbus A320neo）后重新上传..."></textarea>
+                                </div>
+
+                                <!-- 操作按钮（根据标签显示不同按钮） -->
+                                <div class="flex flex-wrap gap-4 justify-between">
+                                    <?php if ($active_tab == 'appeal'): ?>
+                                        <!-- 申诉处理按钮 -->
+                                        <div class="flex gap-4">
+                                            <button type="submit" name="appeal_review" value="approve"
+                                                class="btn-action bg-success text-white shadow-md hover:bg-success/90 focus:ring-success">
+                                                <i class="fa fa-check-circle mr-2"></i> 通过申诉
+                                            </button>
+                                            <button type="submit" name="appeal_review" value="reject"
+                                                class="btn-action bg-danger text-white shadow-md hover:bg-danger/90 focus:ring-danger">
+                                                <i class="fa fa-times-circle mr-2"></i> 拒绝申诉
+                                            </button>
+                                        </div>
+                                    <?php else: ?>
+                                        <!-- 普通审核按钮 -->
+                                        <button type="submit" name="approve"
+                                            class="btn-action bg-success text-white shadow-md hover:bg-success/90 focus:ring-success">
+                                            <i class="fa fa-check-circle mr-2"></i> 通过审核
+                                        </button>
+                                        <button type="submit" name="reject"
+                                            class="btn-action bg-danger text-white shadow-md hover:bg-danger/90 focus:ring-danger">
+                                            <i class="fa fa-times-circle mr-2"></i> 拒绝审核
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <!-- 跳过按钮 -->
+                                    <button type="button"
+                                        class="btn-action border border-gray-300 text-gray-700 hover:bg-gray-50"
+                                        onclick="window.location='admin_review.php?tab=<?php echo $active_tab; ?>&page=<?php echo $page; ?>'">
+                                        <i class="fa fa-arrow-right mr-2"></i> 跳过
+                                    </button>
+                                </div>
+                            </form>
+
+                            <!-- 快捷备注按钮（参考铁路页面） -->
+                            <div class="mt-6 pt-6 border-t border-gray-100">
+                                <h4 class="text-sm font-semibold text-gray-700 mb-3">快捷备注</h4>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                                        data-text="图片清晰，机型/注册号信息完整，符合航空主题">主题合格</button>
+                                    <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                                        data-text="图片模糊，实在看不出来是飞机，不符合发布标准">图片模糊</button>
+                                    <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                                        data-text="机场/注册号信息缺失，需补充后重新上传，不知道的话请重新提交并告知不知道在哪拍的什么飞机">信息缺失</button>
+                                    <button class="comment-btn px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                                        data-text="求你了我们只要民航飞机">无关内容</button>
+                                </div>
                             </div>
-                        </div>
                     </div>
                 <?php else: ?>
                     <!-- 未选择图片时显示 -->
@@ -933,7 +950,7 @@ if (isset($_GET['success'])) $success = $_GET['success'];
     <footer class="bg-gray-800 text-white mt-16 py-8">
         <div class="container mx-auto px-4">
             <div class="text-center text-gray-400 text-sm">
-                <p>© 2025 syphotos 航空摄影图库 - 管理员审核系统</p>
+                <p>©2025-2026 syphotos 航空摄影图库 - 管理员审核系统</p>
             </div>
         </div>
     </footer>

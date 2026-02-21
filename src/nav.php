@@ -1196,8 +1196,8 @@
     <div class="nav" id="mainNav">
         <div class="container nav-container">
             <a href="index.php" class="logo">
-                <img src="8.jpg" alt="Horizon Photos">
-                <span class="logo-text">Horizon Photos</span>
+                <img src="8.jpg" alt="SY Photos">
+                <!-- <span class="logo-text">SY Photos</span> -->
             </a>
 
             <!-- 移动端菜单按钮 -->

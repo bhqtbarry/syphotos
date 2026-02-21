@@ -779,7 +779,7 @@ function getPositionText($positionCode)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horizon Photos - 上传图片</title>
+    <title>SY Photos - 上传图片</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- <script src="https://cdn.jsdelivr.net/npm/exif-js"></script> -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
@@ -1798,11 +1798,12 @@ function getPositionText($positionCode)
 
 
                     <div class="checkbox-group">
-                        <input type="checkbox" id="allow_use" name="allow_use" value="1"
+                        <input type="checkbox" id="allow_use" name="allow_use" value="1" checked="true"
                             <?php echo isset($_POST['allow_use']) ? 'checked' : ''; ?>>
                         <div>
-                            <p><strong>允许平台在不另行通知的情况下使用此图片</strong></p>
+                            <p><strong>上传图片代表同意本站<a href="terms.html" target="_blank">《用户协议》</a></strong></p>
                             <small>用途包括但不限于：网站首页展示、专题合集、社交媒体宣传等（将保留图片作者信息）。不同意此条款将无法完成上传。</small>
+                            <br><small>不要盗图往本站传，这不道德；本站无法控制其他人盗取本站图片。</small>
                         </div>
                     </div>
                 </div>

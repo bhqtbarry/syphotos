@@ -36,7 +36,7 @@ try {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>排行榜</title>
+    <title>SY Photos 排行榜</title>
     <style>
         table {
             width: 100%;
