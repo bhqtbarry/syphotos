@@ -26,18 +26,27 @@ $currentWatermarkAuthorStyle = (isset($_POST['watermark_author_style']) && in_ar
     ? $_POST['watermark_author_style']
     : 'default';
 
-// 确保uploads目录可写
-$upload_dir = 'uploads/';
+// 目录设置：原图放在uploads/o，公开访问的压缩图仍在uploads根目录
+$upload_root = 'uploads/';
+$upload_dir = $upload_root . 'o/'; // 原图（带水印）目录
+$public_upload_dir = $upload_root; // 给前端使用的压缩图目录
+
+if (!is_dir($upload_root)) {
+    mkdir($upload_root, 0755, true);
+}
 if (!is_dir($upload_dir)) {
     mkdir($upload_dir, 0755, true);
 }
-$watermark_dir = $upload_dir . 'watermarks/';
+$watermark_dir = $upload_root . 'watermarks/';
 if (!is_dir($watermark_dir)) {
     mkdir($watermark_dir, 0755, true);
 }
-if (!is_writable($upload_dir)) {
+if (!is_writable($upload_dir) || !is_writable($public_upload_dir)) {
     $error = '上传目录不可写，请检查权限设置';
 }
+
+$preview_target_width = 366;
+$preview_target_height = 220;
 
 /**
  * 计算图片压缩后的尺寸（前后端共用算法）
@@ -211,6 +220,114 @@ function compressImage($sourcePath, $destPath, &$compressedInfo, $maxSize = 5242
 
     $result['success'] = $saveResult;
     return $result;
+}
+
+/**
+ * 生成固定尺寸的预览图（中心裁剪避免变形）
+ */
+function createFixedSizePreview($sourcePath, $destPath, $targetWidth = 366, $targetHeight = 220)
+{
+    $imageInfo = getimagesize($sourcePath);
+    if (!$imageInfo) {
+        return ['success' => false, 'error' => '无法读取源图片信息'];
+    }
+
+    list($width, $height, $type) = $imageInfo;
+
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $sourceImage = imagecreatefromjpeg($sourcePath);
+            break;
+        case IMAGETYPE_PNG:
+            $sourceImage = imagecreatefrompng($sourcePath);
+            imagesavealpha($sourceImage, true);
+            break;
+        case IMAGETYPE_GIF:
+            $sourceImage = imagecreatefromgif($sourcePath);
+            imagesavealpha($sourceImage, true);
+            break;
+        default:
+            return ['success' => false, 'error' => '不支持的图片格式'];
+    }
+
+    $srcRatio = $width / max(1, $height);
+    $destRatio = $targetWidth / max(1, $targetHeight);
+
+    if ($srcRatio > $destRatio) {
+        $scaledHeight = $targetHeight;
+        $scaledWidth = (int)round($targetHeight * $srcRatio);
+    } else {
+        $scaledWidth = $targetWidth;
+        $scaledHeight = (int)round($targetWidth / $srcRatio);
+    }
+
+    $resizedImage = imagecreatetruecolor($scaledWidth, $scaledHeight);
+    if ($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
+        imagealphablending($resizedImage, false);
+        imagesavealpha($resizedImage, true);
+    }
+
+    imagecopyresampled(
+        $resizedImage,
+        $sourceImage,
+        0,
+        0,
+        0,
+        0,
+        $scaledWidth,
+        $scaledHeight,
+        $width,
+        $height
+    );
+    imagedestroy($sourceImage);
+
+    $previewImage = imagecreatetruecolor($targetWidth, $targetHeight);
+    if ($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
+        imagealphablending($previewImage, false);
+        imagesavealpha($previewImage, true);
+        $transparent = imagecolorallocatealpha($previewImage, 0, 0, 0, 127);
+        imagefilledrectangle($previewImage, 0, 0, $targetWidth, $targetHeight, $transparent);
+    }
+
+    $cropX = (int)max(0, floor(($scaledWidth - $targetWidth) / 2));
+    $cropY = (int)max(0, floor(($scaledHeight - $targetHeight) / 2));
+
+    imagecopy(
+        $previewImage,
+        $resizedImage,
+        0,
+        0,
+        $cropX,
+        $cropY,
+        $targetWidth,
+        $targetHeight
+    );
+    imagedestroy($resizedImage);
+
+    $saveResult = false;
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $saveResult = imagejpeg($previewImage, $destPath, 85);
+            break;
+        case IMAGETYPE_PNG:
+            $saveResult = imagepng($previewImage, $destPath, 6);
+            break;
+        case IMAGETYPE_GIF:
+            $saveResult = imagegif($previewImage, $destPath);
+            break;
+    }
+    imagedestroy($previewImage);
+
+    if (!$saveResult) {
+        return ['success' => false, 'error' => '保存预览图失败'];
+    }
+
+    return [
+        'success' => true,
+        'path' => $destPath,
+        'width' => $targetWidth,
+        'height' => $targetHeight
+    ];
 }
 
 /**
@@ -590,6 +707,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
             $filename = uniqid() . '_' . basename($_FILES['photo']['name']);
             $target_path = $upload_dir . $filename;
             $temp_path = $upload_dir . 'temp_' . $filename;
+            $preview_path = $public_upload_dir . $filename;
 
             // 1. 先压缩图片（获取原始和最终尺寸）
             $compressedInfo = [];
@@ -634,116 +752,131 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                     // 清理临时文件
                     @unlink($temp_path);
 
-                    // ========= 通用清洗函数 =========
-                    function extract_number($value, $type = 'int')
-                    {
-                        if ($value === null) {
-                            return null;
-                        }
+                    // 为前端生成366x220的压缩图，保存在uploads根目录
+                    $previewResult = createFixedSizePreview(
+                        $target_path,
+                        $preview_path,
+                        $preview_target_width,
+                        $preview_target_height
+                    );
 
-                        // 转字符串 & 去空格
-                        $value = trim((string)$value);
-
-                        // 提取数字（允许小数）
-                        if (!preg_match('/\d+(\.\d+)?/', $value, $matches)) {
-                            return null;
-                        }
-
-                        return $type === 'float'
-                            ? (float)$matches[0]
-                            : (int)$matches[0];
-                    }
-
-                    // ========= 焦距 Focal Length（INT） =========
-                    $focal_length = extract_number($_POST['FocalLength'] ?? null, 'int');
-
-                    // ========= ISO（INT） =========
-                    $iso_value = extract_number($_POST['ISO'] ?? null, 'int');
-
-                    // ========= 光圈 Aperture（FLOAT） =========
-                    $aperture_value = extract_number($_POST['F'] ?? null, 'float');
-
-                    // 插入数据库
-
-                    try {
-                        $stmt = $pdo->prepare("INSERT INTO photos (
-                            user_id, title, category, aircraft_model, 
-                            registration_number, `拍摄时间`, `拍摄地点`, 
-                            filename, approved, allow_use, created_at,
-                            watermark_size, watermark_opacity, watermark_position,
-                            original_width, original_height, final_width, final_height, Cam, Lens,
-                            FocalLength, ISO, F, Shutter
-                        ) VALUES (
-                            :user_id, :title, :category, :aircraft_model, 
-                            :registration_number, :shooting_time, :shooting_location, 
-                            :filename, 0, :allow_use, NOW(),
-                            :watermark_size, :watermark_opacity, :watermark_position,
-                            :original_width, :original_height, :final_width, :final_height,
-                            :Cam, :Lens,
-                            :FocalLength, :ISO, :F, :Shutter
-
-                        )");
-                        // Focal Length
-                        if ($focal_length === null) {
-                            $stmt->bindValue(':FocalLength', null, PDO::PARAM_NULL);
-                        } else {
-                            $stmt->bindValue(':FocalLength', $focal_length, PDO::PARAM_INT);
-                        }
-
-                        // ISO
-                        if ($iso_value === null) {
-                            $stmt->bindValue(':ISO', null, PDO::PARAM_NULL);
-                        } else {
-                            $stmt->bindValue(':ISO', $iso_value, PDO::PARAM_INT);
-                        }
-
-                        // Aperture
-                        if ($aperture_value === null) {
-                            $stmt->bindValue(':F', null, PDO::PARAM_NULL);
-                        } else {
-                            $stmt->bindValue(':F', $aperture_value);
-                        }
-
-                        $stmt->execute([
-                            ':user_id' => $_SESSION['user_id'],
-                            ':title' => $_POST['title'],
-                            ':category' => $_POST['category'],
-                            ':aircraft_model' => $_POST['aircraft_model'],
-                            ':registration_number' => $_POST['registration_number'],
-                            ':shooting_time' => $_POST['shooting_time'],
-                            ':shooting_location' => $_POST['shooting_location'],
-                            ':filename' => $filename,
-                            ':allow_use' => $_POST['allow_use'],
-                            ':watermark_size' => $watermarkSize,
-                            ':watermark_opacity' => $watermarkOpacity,
-                            ':watermark_position' => $watermarkPosition,
-                            ':original_width' => $compressResult['original_width'],
-                            ':original_height' => $compressResult['original_height'],
-                            ':final_width' => $compressResult['final_width'],
-                            ':final_height' => $compressResult['final_height'],
-                            ':Cam' => $_POST['cameraModel'] ?? '',
-                            ':Lens' => $_POST['lensModel'] ?? '',
-                            ':FocalLength' => $focal_length,
-                            ':ISO' => $iso_value,
-                            ':F' => $aperture_value,
-                            ':Shutter' => $_POST['Shutter'] ?? '',
-                        ]);
-
-                        $success = '图片上传成功，已添加水印（大小: ' . $watermarkSize . '%, 位置: ' .
-                            getPositionText($watermarkPosition) . '），等待审核';
-
-                        if (!empty($watermarkResult['preview_watermark_path'])) {
-                            $wmPath = $watermarkResult['preview_watermark_path'];
-                            // 把服务器相对路径用于显示（uploads/...）
-                            $wmUrl = $wmPath;
-                            $success .= ' 已生成预览水印文件：<a href="' . htmlspecialchars($wmUrl) . '" target="_blank">预览水印</a>';
-                        }
-
-                        $_POST = [];
-                    } catch (PDOException $e) {
-                        $error = "数据库保存失败: " . $e->getMessage();
+                    if (!$previewResult['success']) {
+                        $error = '生成366x220预览失败：' . $previewResult['error'];
                         @unlink($target_path);
-                        error_log("数据库错误: " . $e->getMessage());
+                        @unlink($preview_path);
+                    } else {
+                        // ========= 通用清洗函数 =========
+                        function extract_number($value, $type = 'int')
+                        {
+                            if ($value === null) {
+                                return null;
+                            }
+
+                            // 转字符串 & 去空格
+                            $value = trim((string)$value);
+
+                            // 提取数字（允许小数）
+                            if (!preg_match('/\d+(\.\d+)?/', $value, $matches)) {
+                                return null;
+                            }
+
+                            return $type === 'float'
+                                ? (float)$matches[0]
+                                : (int)$matches[0];
+                        }
+
+                        // ========= 焦距 Focal Length（INT） =========
+                        $focal_length = extract_number($_POST['FocalLength'] ?? null, 'int');
+
+                        // ========= ISO（INT） =========
+                        $iso_value = extract_number($_POST['ISO'] ?? null, 'int');
+
+                        // ========= 光圈 Aperture（FLOAT） =========
+                        $aperture_value = extract_number($_POST['F'] ?? null, 'float');
+
+                        // 插入数据库
+
+                        try {
+                            $stmt = $pdo->prepare("INSERT INTO photos (
+                                user_id, title, category, aircraft_model, 
+                                registration_number, `拍摄时间`, `拍摄地点`, 
+                                filename, approved, allow_use, created_at,
+                                watermark_size, watermark_opacity, watermark_position,
+                                original_width, original_height, final_width, final_height, Cam, Lens,
+                                FocalLength, ISO, F, Shutter
+                            ) VALUES (
+                                :user_id, :title, :category, :aircraft_model, 
+                                :registration_number, :shooting_time, :shooting_location, 
+                                :filename, 0, :allow_use, NOW(),
+                                :watermark_size, :watermark_opacity, :watermark_position,
+                                :original_width, :original_height, :final_width, :final_height,
+                                :Cam, :Lens,
+                                :FocalLength, :ISO, :F, :Shutter
+
+                            )");
+                            // Focal Length
+                            if ($focal_length === null) {
+                                $stmt->bindValue(':FocalLength', null, PDO::PARAM_NULL);
+                            } else {
+                                $stmt->bindValue(':FocalLength', $focal_length, PDO::PARAM_INT);
+                            }
+
+                            // ISO
+                            if ($iso_value === null) {
+                                $stmt->bindValue(':ISO', null, PDO::PARAM_NULL);
+                            } else {
+                                $stmt->bindValue(':ISO', $iso_value, PDO::PARAM_INT);
+                            }
+
+                            // Aperture
+                            if ($aperture_value === null) {
+                                $stmt->bindValue(':F', null, PDO::PARAM_NULL);
+                            } else {
+                                $stmt->bindValue(':F', $aperture_value);
+                            }
+
+                            $stmt->execute([
+                                ':user_id' => $_SESSION['user_id'],
+                                ':title' => $_POST['title'],
+                                ':category' => $_POST['category'],
+                                ':aircraft_model' => $_POST['aircraft_model'],
+                                ':registration_number' => $_POST['registration_number'],
+                                ':shooting_time' => $_POST['shooting_time'],
+                                ':shooting_location' => $_POST['shooting_location'],
+                                ':filename' => $filename,
+                                ':allow_use' => $_POST['allow_use'],
+                                ':watermark_size' => $watermarkSize,
+                                ':watermark_opacity' => $watermarkOpacity,
+                                ':watermark_position' => $watermarkPosition,
+                                ':original_width' => $compressResult['original_width'],
+                                ':original_height' => $compressResult['original_height'],
+                                ':final_width' => $compressResult['final_width'],
+                                ':final_height' => $compressResult['final_height'],
+                                ':Cam' => $_POST['cameraModel'] ?? '',
+                                ':Lens' => $_POST['lensModel'] ?? '',
+                                ':FocalLength' => $focal_length,
+                                ':ISO' => $iso_value,
+                                ':F' => $aperture_value,
+                                ':Shutter' => $_POST['Shutter'] ?? '',
+                            ]);
+
+                            $success = '图片上传成功，已添加水印（大小: ' . $watermarkSize . '%, 位置: ' .
+                                getPositionText($watermarkPosition) . '），等待审核';
+
+                            if (!empty($watermarkResult['preview_watermark_path'])) {
+                                $wmPath = $watermarkResult['preview_watermark_path'];
+                                // 把服务器相对路径用于显示（uploads/...）
+                                $wmUrl = $wmPath;
+                                $success .= ' 已生成预览水印文件：<a href="' . htmlspecialchars($wmUrl) . '" target="_blank">预览水印</a>';
+                            }
+
+                            $_POST = [];
+                        } catch (PDOException $e) {
+                            $error = "数据库保存失败: " . $e->getMessage();
+                            @unlink($target_path);
+                            @unlink($preview_path);
+                            error_log("数据库错误: " . $e->getMessage());
+                        }
                     }
                 }
             }
