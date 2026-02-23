@@ -1398,7 +1398,7 @@ $online_admin_names = getOnlineAdminNames();
                         <?php foreach ($featured_photos as $photo): ?>
                             <div class="carousel-slide">
                                 <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
-                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
+                                    <img src="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>"
                                         alt="<?php echo htmlspecialchars($photo['title']); ?>">
                                     <span class="featured-badge">本站精选</span>
                                 </a>
