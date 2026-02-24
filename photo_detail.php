@@ -164,7 +164,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta property="og:title" content="<?php echo htmlspecialchars($photo['title']); ?> - SY Photos">
-    <meta property="og:image" content="http://<?php echo $_SERVER['HTTP_HOST']; ?>/uploads/<?php echo htmlspecialchars($photo['filename']); ?>">
+    <meta property="og:image" content="http://<?php echo $_SERVER['HTTP_HOST']; ?>/uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>">
     <meta property="og:type" content="article">
     <meta property="og:url" content="<?php echo htmlspecialchars($current_url); ?>">
     <title><?php echo htmlspecialchars($photo['title']); ?> - SY Photos</title>
@@ -1100,10 +1100,10 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             <!-- 图片内容和详情 -->
             <div class="photo-content">
                 <div class="photo-image-container">
-                    <a href="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
+                    <a href="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>"
                         target="_blank"
                         title="点击查看原图">
-                        <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
+                        <img src="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>"
                             alt="<?php echo htmlspecialchars($photo['title']); ?>"
                             class="photo-image">
                     </a>
@@ -1290,7 +1290,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                         echo '<a href="photo_detail.php?id=' . $rp['id'] . '" class="related-link">';
 
                         echo '<div class="related-img-container">';
-                        echo '<img src="uploads/' . htmlspecialchars($rp['filename']) . '" 
+                        echo '<img src="uploads/o/' . htmlspecialchars($rp['filename']) . '" 
                 alt="' . htmlspecialchars($rp['title']) . '" 
                 class="related-img">';
                         echo '<span class="related-category">' . htmlspecialchars($rp['category']) . '</span>';

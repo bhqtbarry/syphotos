@@ -536,11 +536,11 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                             <!-- 图片预览（带放大/缩小/旋转功能） -->
                             <div class="w-full md:w-2/3 mb-6 md:mb-0">
                                 <div class="photo-frame">
-                                    <a href="uploads/<?php echo htmlspecialchars($current_photo['filename']); ?>"
+                                    <a href="uploads/o/<?php echo htmlspecialchars($current_photo['filename']); ?>"
                                         target="_blank"
                                         class="block cursor-zoom-in">
                                         <img id="previewImg"
-                                            src="uploads/<?php echo htmlspecialchars($current_photo['filename']); ?>"
+                                            src="uploads/o/<?php echo htmlspecialchars($current_photo['filename']); ?>"
                                             alt="<?php echo htmlspecialchars($current_photo['title']); ?>"
                                             class="w-full h-auto object-contain transition-transform duration-300"
                                             style="transform: scale(1) rotate(0deg);">
@@ -639,7 +639,7 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                                     <button id="rotate" class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center text-sm">
                                         <i class="fa fa-rotate-right mr-1"></i> 旋转
                                     </button>
-                                    <a href="uploads/<?php echo htmlspecialchars($current_photo['filename']); ?>" target="_blank" class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center text-sm">
+                                    <a href="uploads/o/<?php echo htmlspecialchars($current_photo['filename']); ?>" target="_blank" class="px-3 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 flex items-center text-sm">
                                         <i class="fa fa-download mr-1"></i> 下载原图
                                     </a>
                                     <!-- 删除按钮 -->
@@ -677,7 +677,7 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                                     </div>
                                     <div class="flex">
                                         <span class="info-label">文件大小:</span>
-                                        <span class="text-gray-800"><?php echo number_format(filesize('uploads/' . $current_photo['filename']) / 1024 / 1024, 2); ?> MB</span>
+                                        <span class="text-gray-800"><?php echo number_format(filesize('uploads/o/' . $current_photo['filename']) / 1024 / 1024, 2); ?> MB</span>
                                     </div>
                                     <div class="flex">
                                         <span class="info-label">航空机型:</span>
@@ -723,9 +723,16 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                                         <span class="info-label">快门</span>
                                         <span class="text-gray-800"><?php echo htmlspecialchars($current_photo['Shutter']); ?></span>
                                     </li>
-
-
-
+<li class="flex">
+                                    <span class="info-label">J网页面</span>
+                                    <span class="text-gray-800">
+                                        <a href="https://www.jetphotos.com/registration/<?php echo  ($current_photo['registration_number']); ?>"
+                                            target="_blank"
+                                            class="text-primary hover:underline">
+                                            <?php echo htmlspecialchars($current_photo['registration_number']); ?>
+                                        </a>
+                                    </span>
+   </li>
 
 
 
@@ -810,12 +817,12 @@ if (isset($_GET['success'])) $success = $_GET['success'];
                                     <label class="block text-sm font-medium text-gray-700 mb-2">评分（必选）</label>
                                     <select id="score" name="score"
                                         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm" required>
-                                        
+
                                         <option value="5">5分 - 精选图片</option>
-                                        <option value="4" selected = 'true' >4分 - 完美的图片 </option>
+                                        <option value="4" selected='true'>4分 - 完美的图片 </option>
                                         <option value="3">3分 - 不完美的图片</option>
                                         <option value="2">2分 - 手机品质</option>
-                                        <option value="1">1分 - 座机品质</option>                                  
+                                        <option value="1">1分 - 座机品质</option>
                                     </select>
                                 </div>
 
