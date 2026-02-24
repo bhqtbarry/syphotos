@@ -3,10 +3,6 @@ require 'db_connect.php';
 require_once __DIR__.'/src/mail.php';
 session_start();
 
-if (empty($_SESSION['register_code'])) {
-    $_SESSION['register_code'] = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-}
-
 
 $error = '';
 $success = '';
@@ -16,9 +12,10 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
-    $input_code = $_POST['verification_code'] ?? '';
+    $input_code = strtoupper(trim($_POST['verification_code'] ?? ''));
+    $stored_code = strtoupper($_SESSION['register_code'] ?? '');
 
-    if ($input_code !== $_SESSION['register_code']) {
+    if ($stored_code === '' || $input_code === '' || !hash_equals($stored_code, $input_code)) {
         $error = '验证码错误，请重试';
     } elseif($password != $confirm_password) {
         $error = '两次密码输入不一致';
@@ -47,7 +44,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if (send_verification_email($email, $verification_token)) {
                     $success = '已发送验证邮件，请点击邮件中的链接完成注册';
-                    $_SESSION['register_code'] = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+                    unset($_SESSION['register_code']);
                 } else {
                     $error = '注册成功，但发送验证邮件失败，请稍后重试';
                 }
@@ -74,6 +71,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         .btn { background-color: #165DFF; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; border-radius: 3px; }
         .error { color: red; margin-bottom: 15px; }
         .success { color: green; margin-bottom: 15px; }
+        .captcha-row { display: flex; align-items: center; gap: 10px; }
+        .captcha-row img { border: 1px solid #ccc; border-radius: 3px; height: 40px; cursor: pointer; }
+        .captcha-refresh { background: none; border: none; color: #165DFF; padding: 0; cursor: pointer; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -117,8 +117,12 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
 
             <div class="form-group">
-                <label for="verification_code">验证码（<?php echo htmlspecialchars($_SESSION['register_code'], ENT_QUOTES, 'UTF-8'); ?>）</label>
-                <input type="text" id="verification_code" name="verification_code" required>
+                <label for="verification_code">验证码</label>
+                <div class="captcha-row">
+                    <input type="text" id="verification_code" name="verification_code" placeholder="请输入图片中的字符" required>
+                    <img src="register_captcha.php?ts=<?php echo time(); ?>" alt="验证码" id="captchaImage" title="看不清？点击刷新">
+                </div>
+                <button type="button" class="captcha-refresh" onclick="refreshCaptcha()">看不清？换一张</button>
             </div>
 
             <button type="submit" class="btn">注册</button>
@@ -127,5 +131,13 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
         <p>已有账号？<a href="login.php">立即登录</a></p>
         <p>忘记密码？<a href="forgot_password.php">找回密码</a></p>
     </div>
+<script>
+function refreshCaptcha() {
+    const img = document.getElementById('captchaImage');
+    const url = new URL(img.src, window.location.origin);
+    url.searchParams.set('ts', Date.now());
+    img.src = url.toString();
+}
+</script>
 </body>
 </html>
