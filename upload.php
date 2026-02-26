@@ -79,6 +79,14 @@ function calculateCompressedSize($originalWidth, $originalHeight, $originalSize,
 }
 
 /**
+ * 检测水印内容是否包含非 ASCII 字符，以便优先选择支持中文的字体
+ */
+function watermarkNeedsUnicodeFont(string $text): bool
+{
+    return preg_match('/[^\x00-\x7F]/u', $text) === 1;
+}
+
+/**
  * 图片压缩函数
  */
 
@@ -401,20 +409,26 @@ function addWatermark(
         $colorShadow = imagecolorallocatealpha($image, 0, 0, 0, min(127, $alpha + 30));
     }
 
-    // 字体查找（优先使用仓库内 TTF，否则回退到系统字体）
+    // 字体查找（优先使用支持中文的 TTF，否则回退到系统字体）
     $fontPath = null;
-    $fontCandidates = [
+    $needsUnicodeFont = watermarkNeedsUnicodeFont($line1 . $line2);
+    $baseFontCandidates = [
         __DIR__ . '/fonts/Montserrat-ExtraBold.ttf',
-        
         __DIR__ . '/fonts/arial.ttf',
         __DIR__ . '/fonts/msyh.ttf',
-
         '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         'C:/Windows/Fonts/arial.ttf',
-        'C:/Windows/Fonts/msyh.ttc',
         'C:/Windows/Fonts/seguisym.ttf'
     ];
+    $cjkFontCandidates = [
+        __DIR__ . '/1755230823011393_dingliehuobanti.ttf',
+        __DIR__ . '/fonts/simhei.ttf'
+
+    ];
+    $fontCandidates = $needsUnicodeFont
+        ? array_merge($cjkFontCandidates, $baseFontCandidates)
+        : array_merge($baseFontCandidates, $cjkFontCandidates);
     foreach ($fontCandidates as $c) {
         if (file_exists($c) && is_readable($c)) {
             $fontPath = $c;
