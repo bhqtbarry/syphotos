@@ -26,6 +26,11 @@ $currentWatermarkAuthorStyle = (isset($_POST['watermark_author_style']) && in_ar
     ? $_POST['watermark_author_style']
     : 'default';
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_SESSION['upload_csrf_token'])) {
+    $_SESSION['upload_csrf_token'] = generateUploadCsrfToken();
+}
+$csrfToken = $_SESSION['upload_csrf_token'];
+
 // 目录设置：原图放在uploads/o，公开访问的压缩图仍在uploads根目录
 $upload_root = 'uploads/';
 $upload_dir = $upload_root . 'o/'; // 原图（带水印）目录
@@ -84,6 +89,21 @@ function calculateCompressedSize($originalWidth, $originalHeight, $originalSize,
 function watermarkNeedsUnicodeFont(string $text): bool
 {
     return preg_match('/[^\x00-\x7F]/u', $text) === 1;
+}
+
+/**
+ * 生成上传页 CSRF Token
+ */
+function generateUploadCsrfToken(): string
+{
+    try {
+        return bin2hex(random_bytes(32));
+    } catch (Throwable $e) {
+        if (function_exists('openssl_random_pseudo_bytes')) {
+            return bin2hex(openssl_random_pseudo_bytes(32));
+        }
+        return bin2hex(pack('d', microtime(true)));
+    }
 }
 
 /**
@@ -670,6 +690,14 @@ function addWatermark(
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
+    $postedToken = $_POST['csrf_token'] ?? '';
+    $sessionToken = $_SESSION['upload_csrf_token'] ?? '';
+    if (!$postedToken || !$sessionToken || !hash_equals($sessionToken, (string)$postedToken)) {
+        $error = '表单请求无效，请刷新页面后重试';
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
         if (($_FILES['photo']['size'] ?? 0) > $max_upload_size) {
             $error = '文件过大，最大允许上传 45MB';
@@ -898,6 +926,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
     } else {
         $error = '请选择要上传的图片（错误码：' . ($_FILES['photo']['error'] ?? '未知') . '）';
     }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $_SESSION['upload_csrf_token'] = generateUploadCsrfToken();
+    $csrfToken = $_SESSION['upload_csrf_token'];
 }
 
 /**
@@ -1652,6 +1685,7 @@ function getPositionText($positionCode)
 
 
         <form method="post" action="upload.php" enctype="multipart/form-data" id="uploadForm">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
             <div class="upload-form">
 
