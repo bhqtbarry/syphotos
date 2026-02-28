@@ -626,55 +626,6 @@ function addWatermark(
         return ['status' => false, 'error' => '保存水印图片失败', 'watermark_size_used' => 0];
     }
 
-    // 生成单独的透明背景水印 PNG（与预览一致）
-    $wm = imagecreatetruecolor($blockW, $blockH);
-    imagesavealpha($wm, true);
-    $trans = imagecolorallocatealpha($wm, 0, 0, 0, 127);
-    imagefill($wm, 0, 0, $trans);
-
-    if (isset($color) && $color === 'black') {
-        $wmMain = imagecolorallocatealpha($wm, 0, 0, 0, $alpha);
-        $wmShadow = imagecolorallocatealpha($wm, 255, 255, 255, min(127, $alpha + 30));
-    } else {
-        $wmMain = imagecolorallocatealpha($wm, 255, 255, 255, $alpha);
-        $wmShadow = imagecolorallocatealpha($wm, 0, 0, 0, min(127, $alpha + 30));
-    }
-
-    // 绘制到水印图（相对坐标）
-    if ($fontPath && function_exists('imagettftext')) {
-        if ($iconFontPath) {
-            imagettftext($wm, $iconFontSize, 0, 0 + 1, $iconH + 1, $wmShadow, $iconFontPath, $planeChar);
-            imagettftext($wm, $iconFontSize, 0, 0, $iconH, $wmMain, $iconFontPath, $planeChar);
-        } else {
-            $triShadow = [1, (int)($blockH / 2) + 1, (int)($iconW * 0.7) + 1, 1, (int)($iconW * 0.7) + 1, $blockH - 1];
-            imagefilledpolygon($wm, $triShadow, 3, $wmShadow);
-            $tri = [0, (int)($blockH / 2), (int)($iconW * 0.7), 0, (int)($iconW * 0.7), $blockH];
-            imagefilledpolygon($wm, $tri, 3, $wmMain);
-        }
-
-        imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween + 1, $mainH + 1, $wmShadow, $fontPath, $line1);
-        imagettftext($wm, $mainFontSize, 0, $iconW + $gapBetween, $mainH, $wmMain, $fontPath, $line1);
-        imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + $authH + 1, $wmShadow, $fontPath, $line2);
-        imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2), $mainH + $lineGap + $authH, $wmMain, $fontPath, $line2);
-        if (isset($authorStyle) && $authorStyle === 'bold') {
-            imagettftext($wm, $authorFontSize, 0, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + $authH, $wmMain, $fontPath, $line2);
-        }
-    } else {
-        imagestring($wm, 5, $iconW + $gapBetween + 1, 1, $line1, $wmShadow);
-        imagestring($wm, 5, $iconW + $gapBetween, 0, $line1, $wmMain);
-        imagestring($wm, 3, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap + 1, $line2, $wmShadow);
-        imagestring($wm, 3, (int)(($blockW - $authW) / 2), $mainH + $lineGap, $line2, $wmMain);
-        if (isset($authorStyle) && $authorStyle === 'bold') {
-            imagestring($wm, 3, (int)(($blockW - $authW) / 2) + 1, $mainH + $lineGap, $line2, $wmMain);
-        }
-    }
-
-    // 保存水印单独文件
-    $wmDir = dirname($destPath) . '/watermarks/';
-    if (!is_dir($wmDir)) @mkdir($wmDir, 0755, true);
-    $wmPath = $wmDir . pathinfo($destPath, PATHINFO_FILENAME) . '_preview_wm.png';
-    imagepng($wm, $wmPath);
-    imagedestroy($wm);
 
     imagedestroy($image);
 
@@ -685,7 +636,7 @@ function addWatermark(
         'adjusted_width' => $blockW,
         'adjusted_height' => $blockH,
         'scale_used' => $scale,
-        'preview_watermark_path' => $wmPath
+        'preview_watermark_path' => null
     ];
 }
 
@@ -904,13 +855,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
 
                             $success = '图片上传成功，已添加水印（大小: ' . $watermarkSize . '%, 位置: ' .
                                 getPositionText($watermarkPosition) . '），等待审核';
-
-                            if (!empty($watermarkResult['preview_watermark_path'])) {
-                                $wmPath = $watermarkResult['preview_watermark_path'];
-                                // 把服务器相对路径用于显示（uploads/...）
-                                $wmUrl = $wmPath;
-                                $success .= ' 已生成预览水印文件：<a href="' . htmlspecialchars($wmUrl) . '" target="_blank">预览水印</a>';
-                            }
 
                             $_POST = [];
                         } catch (PDOException $e) {
