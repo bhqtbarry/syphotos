@@ -4,19 +4,14 @@
             <div class="footer-content">
                 <div class="footer-about">
                     <div class="footer-logo">
-                        <img src="8.jpg" alt="Horizon Photos">
-                        <span>Horizon Photos</span>
+                        <img src="8.jpg" alt="SY Photos">
+                        <span>SY Photos</span>
                     </div>
                     <p class="footer-desc">
                         专注于航空摄影作品的分享与交流平台，连接全球航空摄影爱好者，
                         记录每一个精彩的飞行瞬间，探索天空中的无限可能。
                     </p>
-                    <div class="social-links">
-                        <a href="#"><i class="fab fa-weibo"></i></a>
-                        <a href="#"><i class="fab fa-wechat"></i></a>
-                        <a href="#"><i class="fab fa-instagram"></i></a>
-                        <a href="#"><i class="fab fa-twitter"></i></a>
-                    </div>
+
                 </div>
 
                 <div class="footer-links-container">
@@ -43,7 +38,7 @@
             </div>
 
             <div class="copyright">
-                &copy; <?php echo date('Y'); ?> Horizon Photos - 保留所有权利
+                &copy; <?php echo date('Y'); ?> SY Photos - 保留所有权利
             </div>
         </div>
     </footer>

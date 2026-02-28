@@ -1290,7 +1290,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                         echo '<a href="photo_detail.php?id=' . $rp['id'] . '" class="related-link">';
 
                         echo '<div class="related-img-container">';
-                        echo '<img src="uploads/o/' . htmlspecialchars($rp['filename']) . '" 
+                        echo '<img src="uploads/' . htmlspecialchars($rp['filename']) . '" 
                 alt="' . htmlspecialchars($rp['title']) . '" 
                 class="related-img">';
                         echo '<span class="related-category">' . htmlspecialchars($rp['category']) . '</span>';
