@@ -36,7 +36,11 @@ try {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>SY Photos 排行榜</title>
+    <!-- 标题居中显示 -->
+ 
+        <title>SY Photos 排行榜</title>     
+
+
     <style>
         table {
             width: 100%;
@@ -66,7 +70,7 @@ try {
 
 
 
-<h1>排行榜</h1>
+<h1 align="center">排行榜</h1>
 
 <div class="container">
 
