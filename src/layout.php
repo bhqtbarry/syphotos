@@ -2,9 +2,12 @@
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/i18n.php';
 $user = current_user();
+$availableLocales = available_locales();
+$currentLocale = current_locale();
+$localeRedirect = $_SERVER['REQUEST_URI'] ?? '/';
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo h($_SESSION['locale'] ?? detect_locale()); ?>">
+<html lang="<?php echo h($currentLocale); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -47,9 +50,10 @@ $user = current_user();
             </ul>
             <form class="ms-2" method="post" action="/set-locale.php">
                 <input type="hidden" name="csrf" value="<?php echo h(csrf_token()); ?>">
-                <select class="form-select form-select-sm" name="locale" onchange="this.form.submit()">
-                    <?php foreach (['zh','en','fr','es','pt','de','it','ru','ko','ja','th','id','vi','hi'] as $code): ?>
-                        <option value="<?php echo h($code); ?>" <?php echo ($_SESSION['locale'] ?? detect_locale()) === $code ? 'selected' : ''; ?>><?php echo strtoupper($code); ?></option>
+                <input type="hidden" name="redirect_to" value="<?php echo h($localeRedirect); ?>">
+                <select class="form-select form-select-sm" name="locale" aria-label="Select language" onchange="this.form.submit()">
+                    <?php foreach ($availableLocales as $code => $label): ?>
+                        <option value="<?php echo h($code); ?>" <?php echo $currentLocale === $code ? 'selected' : ''; ?>><?php echo h($label); ?> (<?php echo strtoupper($code); ?>)</option>
                     <?php endforeach; ?>
                 </select>
             </form>

@@ -1,7 +1,46 @@
 <?php
+function available_locales(): array
+{
+    return [
+        'zh' => '简体中文',
+        'en' => 'English',
+        'fr' => 'Français',
+        'de' => 'Deutsch',
+        'it' => 'Italiano',
+        'id' => 'Bahasa Indonesia',
+        'es' => 'Español',
+        'pt' => 'Português',
+        'th' => 'ไทย',
+        'ko' => '한국어',
+        'ja' => '日本語',
+        'ru' => 'Русский',
+        'vi' => 'Tiếng Việt',
+        'hi' => 'हिन्दी'
+    ];
+}
+
+function is_supported_locale(string $code): bool
+{
+    return array_key_exists($code, available_locales());
+}
+
+function current_locale(): string
+{
+    if (!empty($_SESSION['locale']) && is_supported_locale($_SESSION['locale'])) {
+        return $_SESSION['locale'];
+    }
+    if (!empty($_COOKIE['syphotos_locale']) && is_supported_locale($_COOKIE['syphotos_locale'])) {
+        $_SESSION['locale'] = $_COOKIE['syphotos_locale'];
+        return $_SESSION['locale'];
+    }
+    $locale = detect_locale();
+    $_SESSION['locale'] = $locale;
+    return $locale;
+}
+
 function detect_locale(): string
 {
-    $supported = ['zh', 'en', 'fr', 'es', 'pt', 'de', 'it', 'ru', 'ko', 'ja', 'th', 'id', 'vi', 'hi'];
+    $supported = array_keys(available_locales());
     $header = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
     $parts = explode(',', $header);
     foreach ($parts as $part) {
@@ -230,10 +269,14 @@ function translations(): array
     ];
 }
 
+
+
 function t(string $key): string
 {
-    $locale = $_SESSION['locale'] ?? detect_locale();
-    $_SESSION['locale'] = $locale;
+    $locale = current_locale();
     $bundle = translations();
+    if (!isset($bundle[$locale])) {
+        $locale = 'en';
+    }
     return $bundle[$locale][$key] ?? $bundle['en'][$key] ?? $key;
 }
