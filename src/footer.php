@@ -38,7 +38,7 @@
             </div>
 
             <div class="copyright">
-                &copy; <?php echo date('Y'); ?> SY Photos - 保留所有权利
+                &copy; 2025-2026 SY Photos - 保留所有权利
             </div>
         </div>
     </footer>
