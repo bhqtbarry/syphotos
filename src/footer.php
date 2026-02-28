@@ -18,37 +18,34 @@ $footerRedirect = $_SERVER['REQUEST_URI'] ?? '/';
                         <img src="8.jpg" alt="SY Photos">
                         <span>SY Photos</span>
                     </div>
-                    <p class="footer-desc">
-                        专注于航空摄影作品的分享与交流平台，连接全球航空摄影爱好者，
-                        记录每一个精彩的飞行瞬间，探索天空中的无限可能。
-                    </p>
+                    <p class="footer-desc"><?php echo h(t('footer_desc')); ?></p>
 
                 </div>
 
                 <div class="footer-links-container">
-                    <h3 class="footer-title">快速链接</h3>
+                    <h3 class="footer-title"><?php echo h(t('footer_quick_links')); ?></h3>
                     <ul class="footer-links">
-                        <li><a href="index.php">首页</a></li>
-                        <li><a href="all_photos.php">全部作品</a></li>
-                        <li><a href="ladder.php">排行榜</a></li>
-                        <li><a href="#">关于我们</a></li>
-                        <li><a href="#">联系我们</a></li>
+                        <li><a href="index.php"><?php echo h(t('footer_home')); ?></a></li>
+                        <li><a href="all_photos.php"><?php echo h(t('footer_all_photos')); ?></a></li>
+                        <li><a href="ladder.php"><?php echo h(t('footer_ladder')); ?></a></li>
+                        <li><a href="#"><?php echo h(t('footer_about_link')); ?></a></li>
+                        <li><a href="#"><?php echo h(t('footer_contact_link')); ?></a></li>
                     </ul>
                 </div>
 
                 <div class="footer-links-container">
-                    <h3 class="footer-title">帮助中心</h3>
+                    <h3 class="footer-title"><?php echo h(t('footer_help_center')); ?></h3>
                     <ul class="footer-links">
-                        <li><a href="../OurRule.pdf">通过规则</a></li>
-                        <li><a href="#">常见问题</a></li>
-                        <li><a href="#">用户协议</a></li>
-                        <li><a href="#">隐私政策</a></li>
-                        <li><a href="#">版权说明</a></li>
+                        <li><a href="../OurRule.pdf"><?php echo h(t('footer_rule')); ?></a></li>
+                        <li><a href="#"><?php echo h(t('footer_faq')); ?></a></li>
+                        <li><a href="#"><?php echo h(t('footer_terms')); ?></a></li>
+                        <li><a href="#"><?php echo h(t('footer_privacy')); ?></a></li>
+                        <li><a href="#"><?php echo h(t('footer_copyright')); ?></a></li>
                     </ul>
                 </div>
 
                 <div class="footer-links-container footer-language">
-                    <h3 class="footer-title">Language / 语言</h3>
+                    <h3 class="footer-title"><?php echo h(t('footer_language_title')); ?></h3>
                     <form class="footer-language-form" method="post" action="/set-locale.php">
                         <input type="hidden" name="csrf" value="<?php echo h(csrf_token()); ?>">
                         <input type="hidden" name="redirect_to" value="<?php echo h($footerRedirect); ?>">
@@ -58,12 +55,13 @@ $footerRedirect = $_SERVER['REQUEST_URI'] ?? '/';
                             <?php endforeach; ?>
                         </select>
                     </form>
-                    <small class="footer-desc">选择上方语言后，整站将即时切换。</small>
+                    <small class="footer-desc"><?php echo h(t('footer_language_hint')); ?></small>
                 </div>
             </div>
 
             <div class="copyright">
-                &copy; 2025-2026 SY Photos - 保留所有权利
+                &copy; 2025-2026 SY Photos - <?php echo h(t('footer_copyright_notice')); ?>
             </div>
         </div>
     </footer>
+
