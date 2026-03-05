@@ -458,7 +458,7 @@ function addWatermark(
 
     // 用于飞机图标的候选字体（尝试包含 U+2708 的字体）
     $planeChar = "✈";
-        $planeChar = "";
+    $planeChar = "";
     $iconFontPath = null;
     $iconCandidates = [
         __DIR__ . '/fonts/Montserrat-ExtraBold.ttf',
@@ -835,7 +835,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && empty($error)) {
                                 ':aircraft_model' => $_POST['aircraft_model'],
                                 ':registration_number' => $_POST['registration_number'],
                                 ':shooting_time' => $_POST['shooting_time'],
-                                ':shooting_location' => $_POST['shooting_location'],
+                                //改成大写
+                                ':shooting_location' => strtoupper($_POST['shooting_location']),
                                 ':filename' => $filename,
                                 ':allow_use' => $_POST['allow_use'],
                                 ':watermark_size' => $watermarkSize,
@@ -905,7 +906,6 @@ function getPositionText($positionCode)
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SY Photos - 上传图片</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- <script src="https://cdn.jsdelivr.net/npm/exif-js"></script> -->
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     <style>
         @font-face {
@@ -1848,6 +1848,16 @@ function getPositionText($positionCode)
                                 value="<?php echo isset($_POST['shooting_location']) ? htmlspecialchars($_POST['shooting_location']) : ''; ?>"
                                 placeholder="例如：PEK">
                         </div>
+                        <!-- 自动显示机场全名 -->
+                        <div class="form-group">
+                            <label for="airport_full_name">
+                                <i class="fas fa-map-marker-alt"></i>
+                                机场全名
+                            </label>
+                            <input type="text" id="airport_full_name" name="airport_full_name" readonly
+                                value="<?php echo isset($_POST['airport_full_name']) ? htmlspecialchars($_POST['airport_full_name']) : ''; ?>"
+                                placeholder="将根据拍摄地点自动填充">
+                        </div>
 
 
                         <div class="form-group">
@@ -2272,6 +2282,10 @@ function getPositionText($positionCode)
                 fillIfEmpty('ISO', data.ISO);
                 fillIfEmpty('F', data.Aperture);
                 fillIfEmpty('Shutter', data.ShutterSpeed);
+                fillIfEmpty('shooting_location', data.NearestAirport);
+                // 根据拍摄地点自动填充机场全名
+                updateAirportFullNameByCode(data.NearestAirport);
+
                 // fillIfEmpty('shooting_time', data.DateTimeOriginal ? data.DateTimeOriginal.replace(' ', 'T') : '');
                 if (data.DateTimeOriginal) {
                     const takenDate = data.DateTimeOriginal.trim();
@@ -2532,6 +2546,37 @@ function getPositionText($positionCode)
                 constrainWatermarkToImage();
             }
         });
+
+        // 机场全名自动填充功能
+        const shootingLocationInput = document.getElementById('shooting_location');
+
+        shootingLocationInput.addEventListener('input', function() {
+            const code = this.value.trim().toUpperCase();
+            updateAirportFullNameByCode(code);
+        });
+
+        function updateAirportFullNameByCode(code) {
+            const airportFullNameInput = document.getElementById('airport_full_name');
+
+            if (!code || code.length !== 3) {
+                airportFullNameInput.value = '';
+                return;
+            }
+
+            fetch(`/api/GetAirPortName.php?code=${encodeURIComponent(code)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.airport_name) {
+                        airportFullNameInput.value = data.airport_name;
+                    } else {
+                        airportFullNameInput.value = '';
+                    }
+                })
+                .catch(err => {
+                    console.error('获取机场信息失败:', err);
+                    airportFullNameInput.value = '';
+                });
+        }
 
         // 飞机信息自动填充功能
         const registrationInput = document.getElementById('registration_number');

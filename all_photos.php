@@ -200,7 +200,7 @@ $display_end = $totalPhotos > 0 ? $offset + count($photos) : 0;
             padding: 40px 0;
             background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
             color: white;
-            margin-bottom: 40px;
+            margin-bottom: 10px;
             position: relative;
             overflow: hidden;
         }

@@ -1029,29 +1029,8 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 </head>
 
 <body>
-    <div class="nav" id="mainNav">
-        <div class="nav-container">
-            <a href="index.php" class="logo">
-                <i class="fas fa-plane logo-icon"></i>
-                Horizon Photos
-            </a>
-            <div class="nav-links">
-                <a href="index.php"><i class="fas fa-home"></i> 首页</a>
-                <a href="all_photos.php"><i class="fas fa-images"></i> 全部图片</a>
-                <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="user_center.php"><i class="fas fa-user"></i> 用户中心</a>
-                    <a href="upload.php"><i class="fas fa-upload"></i> 上传图片</a>
-                    <?php if ($_SESSION['is_admin']): ?>
-                        <a href="admin_review.php"><i class="fas fa-tachometer-alt"></i> 管理员后台</a>
-                    <?php endif; ?>
-                    <a href="logout.php"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
-                <?php else: ?>
-                    <a href="login.php"><i class="fas fa-sign-in-alt"></i> 登录</a>
-                    <a href="register.php"><i class="fas fa-user-plus"></i> 注册</a>
-                <?php endif; ?>
-            </div>
-        </div>
-    </div>
+
+    <?php include __DIR__ . '/src/nav.php'; ?>
 
     <div class="container">
         <h1 class="page-title">图片详情</h1>
@@ -1276,7 +1255,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                 $stmt = $pdo->prepare("SELECT id, title, filename, category, created_at, views 
                                        FROM photos 
                                        WHERE category = :category AND id != :current_id AND approved = 1
-                                       ORDER BY created_at DESC LIMIT 4");
+                                       ORDER BY created_at DESC LIMIT 5");
                 $stmt->bindParam(':category', $photo['category']);
                 $stmt->bindParam(':current_id', $photo_id);
                 $stmt->execute();
@@ -1325,13 +1304,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <div class="copyright">
-                &copy; <?php echo date('Y'); ?> Horizon Photos - 保留所有权利
-            </div>
-        </div>
-    </footer>
+
 
     <!-- 微信分享二维码弹窗 -->
     <div id="weixinModal">
@@ -1411,6 +1384,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             }
         });
     </script>
+           <?php include __DIR__ . '/src/footer.php'; ?>
 </body>
 
 </html>
