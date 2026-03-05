@@ -1208,18 +1208,18 @@
             </button>
 
             <div class="nav-links" id="navLinks">
-                <a href="index.php"><i class="fas fa-home"></i> 首页</a>
-                <a href="all_photos.php"><i class="fas fa-images"></i> 全部图片</a>
+                <a href="index.php"><i class="fas fa-home"></i> Home</a>
+                <a href="all_photos.php"><i class="fas fa-images"></i> All Photos</a>
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="user_center.php"><i class="fas fa-user"></i> 用户中心</a>
-                    <a href="upload.php"><i class="fas fa-upload"></i> 上传图片</a>
+                    <a href="user_center.php"><i class="fas fa-user"></i> User Center</a>
+                    <a href="upload.php"><i class="fas fa-upload"></i> Upload</a>
                     <?php if ($_SESSION['is_admin']): ?>
-                        <a href="admin_review.php"><i class="fas fa-tachometer-alt"></i> 管理员后台</a>
+                        <a href="admin_review.php"><i class="fas fa-tachometer-alt"></i> Admin</a>
                     <?php endif; ?>
-                    <a href="logout.php"><i class="fas fa-sign-out-alt"></i> 退出登录</a>
+                    <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Quit</a>
                 <?php else: ?>
-                    <a href="login.php"><i class="fas fa-sign-in-alt"></i> 登录</a>
-                    <a href="register.php"><i class="fas fa-user-plus"></i> 注册</a>
+                    <a href="login.php"><i class="fas fa-sign-in-alt"></i> Login</a>
+                    <a href="register.php"><i class="fas fa-user-plus"></i> Register</a>
                 <?php endif; ?>
             </div>
         </div>
