@@ -1,5 +1,11 @@
 <?php
 // nav.php 不输出 <html> <body>，只管导航
+if (!function_exists('h')) {
+    require_once __DIR__ . '/helpers.php';
+}
+if (!function_exists('t')) {
+    require_once __DIR__ . '/i18n.php';
+}
 ?>
   <style>
         :root {
@@ -1208,18 +1214,18 @@
             </button>
 
             <div class="nav-links" id="navLinks">
-                <a href="index.php"><i class="fas fa-home"></i> Home</a>
-                <a href="all_photos.php"><i class="fas fa-images"></i> All Photos</a>
+                <a href="index.php"><i class="fas fa-home"></i> <?php echo h(t('nav_home')); ?></a>
+                <a href="all_photos.php"><i class="fas fa-images"></i> <?php echo h(t('nav_all_photos')); ?></a>
                 <?php if (isset($_SESSION['user_id'])): ?>
-                    <a href="user_center.php"><i class="fas fa-user"></i> User Center</a>
-                    <a href="upload.php"><i class="fas fa-upload"></i> Upload</a>
-                    <?php if ($_SESSION['is_admin']): ?>
-                        <a href="admin_review.php"><i class="fas fa-tachometer-alt"></i> Admin</a>
+                    <a href="user_center.php"><i class="fas fa-user"></i> <?php echo h(t('nav_user_center')); ?></a>
+                    <a href="upload.php"><i class="fas fa-upload"></i> <?php echo h(t('nav_upload')); ?></a>
+                    <?php if (!empty($_SESSION['is_admin'])): ?>
+                        <a href="admin_review.php"><i class="fas fa-tachometer-alt"></i> <?php echo h(t('nav_admin')); ?></a>
                     <?php endif; ?>
-                    <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Quit</a>
+                    <a href="logout.php"><i class="fas fa-sign-out-alt"></i> <?php echo h(t('logout')); ?></a>
                 <?php else: ?>
-                    <a href="login.php"><i class="fas fa-sign-in-alt"></i> Login</a>
-                    <a href="register.php"><i class="fas fa-user-plus"></i> Register</a>
+                    <a href="login.php"><i class="fas fa-sign-in-alt"></i> <?php echo h(t('nav_login')); ?></a>
+                    <a href="register.php"><i class="fas fa-user-plus"></i> <?php echo h(t('nav_register')); ?></a>
                 <?php endif; ?>
             </div>
         </div>
