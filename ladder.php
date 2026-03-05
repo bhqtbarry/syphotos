@@ -21,6 +21,7 @@ LEFT JOIN (
     JOIN www_syphotos_cn.users u ON p.user_id = u.id
     GROUP BY u.username
 ) t2 ON t1.username = t2.username
+ where t1.ct > 30
 ORDER BY t1.ct DESC
 ";
 
