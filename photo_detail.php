@@ -1033,6 +1033,19 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
     <?php include __DIR__ . '/src/nav.php'; ?>
 
+    <!-- 图片内容和详情 -->
+    <div class="photo-content">
+        <div class="photo-image-container">
+            <a href="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>" target="_blank" title="点击查看原图">
+                <img src="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>"
+                    alt="<?php echo htmlspecialchars($photo['title']); ?>" class="photo-image">
+            </a>
+            <div class="image-zoom-indicator">
+                <i class="fas fa-search-plus"></i> 点击查看原图
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- <h1 class="page-title">图片详情</h1> -->
 
@@ -1055,19 +1068,7 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             <!-- 图片标题和基本信息 -->
 
 
-            <!-- 图片内容和详情 -->
-            <div class="photo-content">
-                <div class="photo-image-container">
-                    <a href="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>" target="_blank"
-                        title="点击查看原图">
-                        <img src="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>"
-                            alt="<?php echo htmlspecialchars($photo['title']); ?>" class="photo-image">
-                    </a>
-                    <div class="image-zoom-indicator">
-                        <i class="fas fa-search-plus"></i> 点击查看原图
-                    </div>
-                </div>
-            </div>
+
 
 
             <!-- 交互按钮 -->
