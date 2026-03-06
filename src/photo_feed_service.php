@@ -234,25 +234,7 @@ function photo_feed_fetch_user_profile(PDO $pdo, int $userId): ?array
                 u.username,
                 u.created_at,
                 u.last_active,
-                (SELECT COUNT(*) FROM photos p WHERE p.user_id = u.id AND p.approved = 1) AS photo_count,
-                (SELECT p.`拍摄地点`
-                 FROM photos p
-                 WHERE p.user_id = u.id AND p.approved = 1 AND COALESCE(p.`拍摄地点`, '') <> ''
-                 GROUP BY p.`拍摄地点`
-                 ORDER BY COUNT(*) DESC, p.`拍摄地点` ASC
-                 LIMIT 1) AS top_location,
-                (SELECT p.Cam
-                 FROM photos p
-                 WHERE p.user_id = u.id AND p.approved = 1 AND COALESCE(p.Cam, '') <> ''
-                 GROUP BY p.Cam
-                 ORDER BY COUNT(*) DESC, p.Cam ASC
-                 LIMIT 1) AS top_camera,
-                (SELECT p.Lens
-                 FROM photos p
-                 WHERE p.user_id = u.id AND p.approved = 1 AND COALESCE(p.Lens, '') <> ''
-                 GROUP BY p.Lens
-                 ORDER BY COUNT(*) DESC, p.Lens ASC
-                 LIMIT 1) AS top_lens
+                (SELECT COUNT(*) FROM photos p WHERE p.user_id = u.id AND p.approved = 1) AS photo_count
             FROM users u
             WHERE u.id = :user_id
             LIMIT 1";
@@ -263,4 +245,63 @@ function photo_feed_fetch_user_profile(PDO $pdo, int $userId): ?array
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return $profile ?: null;
+}
+
+function photo_feed_fetch_top_values(PDO $pdo, int $userId, string $column, string $filterKey, int $limit = 3): array
+{
+    $allowed = [
+        'location' => ['column' => 'p.`拍摄地点`', 'filter_key' => 'iatacode'],
+        'airline' => ['column' => 'p.category', 'filter_key' => 'airline'],
+        'aircraft_model' => ['column' => 'p.aircraft_model', 'filter_key' => 'aircraft_model'],
+        'camera' => ['column' => 'p.Cam', 'filter_key' => 'cam'],
+        'lens' => ['column' => 'p.Lens', 'filter_key' => 'lens'],
+    ];
+
+    if (!isset($allowed[$column])) {
+        return [];
+    }
+
+    $columnSql = $allowed[$column]['column'];
+    $filterParam = $allowed[$column]['filter_key'];
+
+    $totalStmt = $pdo->prepare("SELECT COUNT(*)
+        FROM photos p
+        WHERE p.user_id = :user_id
+          AND p.approved = 1
+          AND COALESCE({$columnSql}, '') <> ''");
+    $totalStmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $totalStmt->execute();
+    $total = (int) $totalStmt->fetchColumn();
+
+    if ($total === 0) {
+        return [];
+    }
+
+    $sql = "SELECT {$columnSql} AS label, COUNT(*) AS item_count
+        FROM photos p
+        WHERE p.user_id = :user_id
+          AND p.approved = 1
+          AND COALESCE({$columnSql}, '') <> ''
+        GROUP BY {$columnSql}
+        ORDER BY item_count DESC, label ASC
+        LIMIT :limit";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return array_map(static function (array $row) use ($total, $userId, $filterParam): array {
+        $label = (string) ($row['label'] ?? '');
+        $count = (int) ($row['item_count'] ?? 0);
+        $percentage = $total > 0 ? round(($count / $total) * 100, 1) : 0.0;
+
+        return [
+            'label' => $label,
+            'count' => $count,
+            'percentage' => $percentage,
+            'url' => 'photolist.php?userid=' . $userId . '&' . $filterParam . '=' . urlencode($label),
+        ];
+    }, $rows);
 }

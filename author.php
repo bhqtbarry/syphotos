@@ -9,6 +9,11 @@ $author = null;
 $photos = [];
 $totalPhotos = 0;
 $hasMore = false;
+$topAirlines = [];
+$topAircraftModels = [];
+$topLocations = [];
+$topCameras = [];
+$topLenses = [];
 $filters = photo_feed_normalize_filters([
     'userid' => $userId,
     'page' => 1,
@@ -27,6 +32,11 @@ if ($userId <= 0) {
             $totalPhotos = photo_feed_fetch_total($pdo, $filters);
             $photos = photo_feed_fetch_page($pdo, $filters);
             $hasMore = count($photos) < $totalPhotos;
+            $topAirlines = photo_feed_fetch_top_values($pdo, $userId, 'airline', 'airline');
+            $topAircraftModels = photo_feed_fetch_top_values($pdo, $userId, 'aircraft_model', 'aircraft_model');
+            $topLocations = photo_feed_fetch_top_values($pdo, $userId, 'location', 'iatacode');
+            $topCameras = photo_feed_fetch_top_values($pdo, $userId, 'camera', 'cam');
+            $topLenses = photo_feed_fetch_top_values($pdo, $userId, 'lens', 'lens');
         }
     } catch (PDOException $e) {
         $errorMessage = '获取作者信息失败: ' . $e->getMessage();
@@ -91,6 +101,33 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
             font-size: 1rem;
             font-weight: 600;
             word-break: break-word;
+        }
+
+        .author-top-list {
+            margin: 8px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .author-top-item + .author-top-item {
+            margin-top: 8px;
+        }
+
+        .author-top-link {
+            color: #165dff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .author-top-link:hover {
+            text-decoration: underline;
+        }
+
+        .author-top-meta {
+            margin-left: 6px;
+            color: #4e5969;
+            font-size: 0.88rem;
+            font-weight: 400;
         }
 
         .author-section-title {
@@ -235,16 +272,89 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                     <div class="author-card-value"><?php echo !empty($author['last_active']) ? h(date('Y-m-d H:i', strtotime($author['last_active']))) : '未知'; ?></div>
                 </div>
                 <div class="author-card">
+                    <div class="author-card-label">最常拍的航司</div>
+                    <div class="author-card-value">
+                        <?php if (empty($topAirlines)): ?>
+                            暂无
+                        <?php else: ?>
+                            <ul class="author-top-list">
+                                <?php foreach ($topAirlines as $item): ?>
+                                    <li class="author-top-item">
+                                        <a class="author-top-link" href="<?php echo h($item['url']); ?>"><?php echo h($item['label']); ?></a>
+                                        <span class="author-top-meta"><?php echo $item['count']; ?> 次 / <?php echo rtrim(rtrim(number_format($item['percentage'], 1), '0'), '.'); ?>%</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="author-card">
+                    <div class="author-card-label">最常拍的机型</div>
+                    <div class="author-card-value">
+                        <?php if (empty($topAircraftModels)): ?>
+                            暂无
+                        <?php else: ?>
+                            <ul class="author-top-list">
+                                <?php foreach ($topAircraftModels as $item): ?>
+                                    <li class="author-top-item">
+                                        <a class="author-top-link" href="<?php echo h($item['url']); ?>"><?php echo h($item['label']); ?></a>
+                                        <span class="author-top-meta"><?php echo $item['count']; ?> 次 / <?php echo rtrim(rtrim(number_format($item['percentage'], 1), '0'), '.'); ?>%</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="author-card">
                     <div class="author-card-label">最常出现的地点</div>
-                    <div class="author-card-value"><?php echo h($author['top_location'] ?: '暂无'); ?></div>
+                    <div class="author-card-value">
+                        <?php if (empty($topLocations)): ?>
+                            暂无
+                        <?php else: ?>
+                            <ul class="author-top-list">
+                                <?php foreach ($topLocations as $item): ?>
+                                    <li class="author-top-item">
+                                        <a class="author-top-link" href="<?php echo h($item['url']); ?>"><?php echo h($item['label']); ?></a>
+                                        <span class="author-top-meta"><?php echo $item['count']; ?> 次 / <?php echo rtrim(rtrim(number_format($item['percentage'], 1), '0'), '.'); ?>%</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <div class="author-card">
                     <div class="author-card-label">最常用的相机</div>
-                    <div class="author-card-value"><?php echo h($author['top_camera'] ?: '暂无'); ?></div>
+                    <div class="author-card-value">
+                        <?php if (empty($topCameras)): ?>
+                            暂无
+                        <?php else: ?>
+                            <ul class="author-top-list">
+                                <?php foreach ($topCameras as $item): ?>
+                                    <li class="author-top-item">
+                                        <a class="author-top-link" href="<?php echo h($item['url']); ?>"><?php echo h($item['label']); ?></a>
+                                        <span class="author-top-meta"><?php echo $item['count']; ?> 次 / <?php echo rtrim(rtrim(number_format($item['percentage'], 1), '0'), '.'); ?>%</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
                 </div>
                 <div class="author-card">
                     <div class="author-card-label">最常用的镜头</div>
-                    <div class="author-card-value"><?php echo h($author['top_lens'] ?: '暂无'); ?></div>
+                    <div class="author-card-value">
+                        <?php if (empty($topLenses)): ?>
+                            暂无
+                        <?php else: ?>
+                            <ul class="author-top-list">
+                                <?php foreach ($topLenses as $item): ?>
+                                    <li class="author-top-item">
+                                        <a class="author-top-link" href="<?php echo h($item['url']); ?>"><?php echo h($item['label']); ?></a>
+                                        <span class="author-top-meta"><?php echo $item['count']; ?> 次 / <?php echo rtrim(rtrim(number_format($item['percentage'], 1), '0'), '.'); ?>%</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </section>
 
