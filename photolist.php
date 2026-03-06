@@ -147,7 +147,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
             grid-template-columns: repeat(3, 1fr);
             gap: 0;
             align-items: start;
-            background: #0f1724;
+            background: #dfeeff;
         }
 
         .photolist-card {
@@ -157,7 +157,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
             justify-content: center;
             aspect-ratio: 16 / 10;
             overflow: hidden;
-            background: #0f1724;
+            background: #dfeeff;
         }
 
         .photolist-card img {
@@ -174,8 +174,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
 
         .photolist-empty,
         .photolist-error,
-        .photolist-loading,
-        .photolist-end {
+        .photolist-loading {
             margin: 20px 16px;
             padding: 14px 16px;
             border-radius: 10px;
@@ -189,15 +188,37 @@ $pageTitle = implode(' - ', $pageTitleParts);
             background: #fff1f3;
         }
 
-        .photolist-loading,
-        .photolist-end {
+        .photolist-loading {
             margin-top: 12px;
             margin-bottom: 0;
         }
 
-        .photolist-loading[hidden],
-        .photolist-end[hidden] {
+        .photolist-loading[hidden] {
             display: none;
+        }
+
+        .photolist-action {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 12px 16px 0;
+            padding: 14px 16px;
+            border: 0;
+            border-radius: 10px;
+            background: #165dff;
+            color: #ffffff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .photolist-action:hover {
+            background: #0e42d2;
+            transform: translateY(-1px);
+        }
+
+        .photolist-action.is-end {
+            background: #7aa7e8;
         }
 
         .photolist-sentinel {
@@ -249,7 +270,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
         <?php else: ?>
             <section class="photolist-grid" id="photolistGrid"><?php echo renderPhotoCards($photos); ?></section>
             <div class="photolist-loading" id="photolistLoading" hidden>正在加载更多图片...</div>
-            <div class="photolist-end" id="photolistEnd" <?php echo $hasMore ? 'hidden' : ''; ?>>已经到底了</div>
+            <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了'; ?></button>
             <div class="photolist-sentinel" id="photolistSentinel"></div>
         <?php endif; ?>
     </main>
@@ -262,20 +283,26 @@ $pageTitle = implode(' - ', $pageTitleParts);
                 const grid = document.getElementById('photolistGrid');
                 const sentinel = document.getElementById('photolistSentinel');
                 const loading = document.getElementById('photolistLoading');
-                const end = document.getElementById('photolistEnd');
+                const action = document.getElementById('photolistAction');
 
-                if (!grid || !sentinel) {
+                if (!grid || !sentinel || !action) {
                     return;
                 }
 
                 let currentPage = <?php echo $page; ?>;
                 let isLoading = false;
                 let hasMore = <?php echo $hasMore ? 'true' : 'false'; ?>;
+                let loadFailed = false;
                 const baseUrl = new URL(window.location.href);
 
                 function setState() {
                     loading.hidden = !isLoading;
-                    end.hidden = hasMore || isLoading;
+                    action.disabled = isLoading;
+                    action.textContent = hasMore ? (isLoading ? '正在加载...' : '继续加载') : '已经到底了';
+                    if (loadFailed && !isLoading && hasMore) {
+                        action.textContent = '继续加载';
+                    }
+                    action.classList.toggle('is-end', !hasMore);
                 }
 
                 async function loadMore() {
@@ -284,6 +311,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
                     }
 
                     isLoading = true;
+                    loadFailed = false;
                     setState();
 
                     const nextUrl = new URL(baseUrl);
@@ -308,10 +336,10 @@ $pageTitle = implode(' - ', $pageTitleParts);
                         }
 
                         hasMore = Boolean(data.hasMore);
+                        loadFailed = false;
                     } catch (error) {
-                        hasMore = false;
-                        end.hidden = false;
-                        end.textContent = error.message || '加载失败';
+                        loadFailed = true;
+                        action.textContent = error.message || '继续加载';
                     } finally {
                         isLoading = false;
                         setState();
@@ -319,6 +347,18 @@ $pageTitle = implode(' - ', $pageTitleParts);
                 }
 
                 setState();
+
+                action.addEventListener('click', () => {
+                    if (hasMore) {
+                        loadMore();
+                        return;
+                    }
+
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                });
 
                 if (!hasMore) {
                     return;
