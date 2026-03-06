@@ -11,6 +11,9 @@ $aircraftModel = $filters['aircraft_model'];
 $cam = $filters['cam'];
 $lens = $filters['lens'];
 $page = $filters['page'];
+$selectedUser = null;
+$userDisplayName = '';
+$initialSuggestions = [];
 
 $photos = [];
 $errorMessage = '';
@@ -18,6 +21,10 @@ $totalPhotos = 0;
 $hasMore = false;
 
 try {
+    if ($userId > 0) {
+        $selectedUser = photo_feed_fetch_user_basic($pdo, $userId);
+        $userDisplayName = $selectedUser['username'] ?? '';
+    }
     $totalPhotos = photo_feed_fetch_total($pdo, $filters);
     $photos = photo_feed_fetch_page($pdo, $filters);
     $offset = ($filters['page'] - 1) * $filters['per_page'];
@@ -26,12 +33,27 @@ try {
     $errorMessage = '获取图片失败: ' . $e->getMessage();
 }
 
+try {
+    $initialSuggestions = [
+        'userid' => photo_feed_fetch_filter_suggestions($pdo, 'userid', $userDisplayName, $filters, 10),
+        'airline' => photo_feed_fetch_filter_suggestions($pdo, 'airline', $airline, $filters, 10),
+        'aircraft_model' => photo_feed_fetch_filter_suggestions($pdo, 'aircraft_model', $aircraftModel, $filters, 10),
+        'cam' => photo_feed_fetch_filter_suggestions($pdo, 'cam', $cam, $filters, 10),
+        'lens' => photo_feed_fetch_filter_suggestions($pdo, 'lens', $lens, $filters, 10),
+        'iatacode' => photo_feed_fetch_filter_suggestions($pdo, 'iatacode', $iataCode, $filters, 10),
+    ];
+} catch (PDOException $e) {
+    if ($errorMessage === '') {
+        $errorMessage = '获取筛选项失败: ' . $e->getMessage();
+    }
+}
+
 $pageTitleParts = ['SY Photos 图库'];
 if ($iataCode !== '') {
     $pageTitleParts[] = $iataCode;
 }
 if ($userId > 0) {
-    $pageTitleParts[] = '用户 ' . $userId;
+    $pageTitleParts[] = $userDisplayName !== '' ? $userDisplayName : ('用户 ' . $userId);
 }
 $filterSummaryParts = [];
 if ($airline !== '') {
@@ -54,7 +76,7 @@ if ($iataCode !== '') {
     $filterSummaryParts[] = '拍摄地点 ' . $iataCode;
 }
 if ($userId > 0) {
-    $filterSummaryParts[] = '用户 ID ' . $userId;
+    $filterSummaryParts[] = '作者 ' . ($userDisplayName !== '' ? $userDisplayName : ('用户 ' . $userId));
 }
 $pageTitle = implode(' - ', $pageTitleParts);
 $apiAccess = photo_feed_issue_access_signature($filters);
@@ -75,6 +97,151 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             padding: 18px 16px 14px;
             background: #ffffff;
             border-bottom: 1px solid #e6ebf2;
+        }
+
+        .photolist-filter-wrap {
+            padding: 16px;
+            display: none;
+        }
+
+        .photolist-filter-panel {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(22, 93, 255, 0.08);
+            padding: 16px;
+        }
+
+        .photolist-filter-title {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #1d2129;
+        }
+
+        .photolist-filter-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .photolist-filter-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #4e5969;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .photolist-filter-group input {
+            width: 100%;
+            padding: 11px 12px;
+            border: 1px solid #cfe0fb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #f8fbff;
+        }
+
+        .photolist-filter-group input:focus {
+            outline: none;
+            border-color: #165dff;
+            background: #ffffff;
+        }
+
+        .photolist-suggestions {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .photolist-suggestion {
+            border: 0;
+            background: #e8f3ff;
+            color: #165dff;
+            border-radius: 999px;
+            padding: 7px 10px;
+            font-size: 0.82rem;
+            cursor: pointer;
+        }
+
+        .photolist-filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .photolist-filter-submit,
+        .photolist-filter-reset {
+            flex: 1;
+            border: 0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 0.94rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .photolist-filter-submit {
+            background: #165dff;
+            color: #ffffff;
+        }
+
+        .photolist-filter-reset {
+            background: #eef4ff;
+            color: #165dff;
+        }
+
+        .photolist-filter-fab {
+            position: fixed;
+            right: 16px;
+            bottom: 84px;
+            width: 56px;
+            height: 56px;
+            border: 0;
+            border-radius: 50%;
+            background: #165dff;
+            color: #ffffff;
+            box-shadow: 0 12px 24px rgba(22, 93, 255, 0.25);
+            font-size: 1.2rem;
+            z-index: 130;
+        }
+
+        .photolist-filter-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 25, 48, 0.42);
+            display: flex;
+            align-items: flex-end;
+            z-index: 140;
+        }
+
+        .photolist-filter-modal[hidden] {
+            display: none;
+        }
+
+        .photolist-filter-sheet {
+            width: 100%;
+            max-height: 84vh;
+            overflow-y: auto;
+            background: #ffffff;
+            border-radius: 20px 20px 0 0;
+            padding: 18px 16px 22px;
+        }
+
+        .photolist-filter-sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .photolist-filter-close {
+            border: 0;
+            background: #eef4ff;
+            color: #165dff;
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-weight: 700;
         }
 
         .photolist-title {
@@ -184,11 +351,29 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             .photolist-card {
                 aspect-ratio: 16 / 9;
             }
+
+            .photolist-filter-wrap {
+                padding: 20px 24px 0;
+                display: block;
+            }
+
+            .photolist-filter-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .photolist-filter-fab,
+            .photolist-filter-modal {
+                display: none;
+            }
         }
 
         @media (min-width: 1200px) {
             .photolist-grid {
                 grid-template-columns: repeat(6, 1fr);
+            }
+
+            .photolist-filter-grid {
+                grid-template-columns: repeat(6, minmax(0, 1fr));
             }
         }
     </style>
@@ -207,6 +392,49 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             </div>
         </section>
 
+        <section class="photolist-filter-wrap">
+            <form class="photolist-filter-panel" id="desktopFilterForm" method="get" action="photolist.php">
+                <h2 class="photolist-filter-title">筛选</h2>
+                <div class="photolist-filter-grid">
+                    <div class="photolist-filter-group" data-field="userid">
+                        <label for="filter-author-desktop">作者</label>
+                        <input id="filter-author-desktop" type="text" value="<?php echo h($userDisplayName); ?>" autocomplete="off" data-suggest-field="userid" data-target-hidden="filter-userid-desktop">
+                        <input id="filter-userid-desktop" type="hidden" name="userid" value="<?php echo $userId; ?>">
+                        <div class="photolist-suggestions" data-suggestions-for="userid"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="airline">
+                        <label for="filter-airline-desktop">航司</label>
+                        <input id="filter-airline-desktop" type="text" name="airline" value="<?php echo h($airline); ?>" autocomplete="off" data-suggest-field="airline">
+                        <div class="photolist-suggestions" data-suggestions-for="airline"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="aircraft_model">
+                        <label for="filter-model-desktop">机型</label>
+                        <input id="filter-model-desktop" type="text" name="aircraft_model" value="<?php echo h($aircraftModel); ?>" autocomplete="off" data-suggest-field="aircraft_model">
+                        <div class="photolist-suggestions" data-suggestions-for="aircraft_model"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="cam">
+                        <label for="filter-cam-desktop">相机</label>
+                        <input id="filter-cam-desktop" type="text" name="cam" value="<?php echo h($cam); ?>" autocomplete="off" data-suggest-field="cam">
+                        <div class="photolist-suggestions" data-suggestions-for="cam"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="lens">
+                        <label for="filter-lens-desktop">镜头</label>
+                        <input id="filter-lens-desktop" type="text" name="lens" value="<?php echo h($lens); ?>" autocomplete="off" data-suggest-field="lens">
+                        <div class="photolist-suggestions" data-suggestions-for="lens"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="iatacode">
+                        <label for="filter-location-desktop">拍摄地点</label>
+                        <input id="filter-location-desktop" type="text" name="iatacode" value="<?php echo h($iataCode); ?>" autocomplete="off" data-suggest-field="iatacode">
+                        <div class="photolist-suggestions" data-suggestions-for="iatacode"></div>
+                    </div>
+                </div>
+                <div class="photolist-filter-actions">
+                    <button class="photolist-filter-submit" type="submit">应用筛选</button>
+                    <a class="photolist-filter-reset" href="photolist.php">清空</a>
+                </div>
+            </form>
+        </section>
+
         <?php if ($errorMessage !== ''): ?>
             <div class="photolist-error"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php elseif (empty($photos)): ?>
@@ -219,7 +447,166 @@ $apiAccess = photo_feed_issue_access_signature($filters);
         <?php endif; ?>
     </main>
 
+    <button class="photolist-filter-fab" id="mobileFilterFab" type="button" aria-label="打开筛选">⏷</button>
+    <div class="photolist-filter-modal" id="mobileFilterModal" hidden>
+        <div class="photolist-filter-sheet">
+            <div class="photolist-filter-sheet-header">
+                <h2 class="photolist-filter-title">筛选</h2>
+                <button class="photolist-filter-close" id="mobileFilterClose" type="button">关闭</button>
+            </div>
+            <form class="photolist-filter-panel" id="mobileFilterForm" method="get" action="photolist.php">
+                <div class="photolist-filter-grid">
+                    <div class="photolist-filter-group" data-field="userid">
+                        <label for="filter-author-mobile">作者</label>
+                        <input id="filter-author-mobile" type="text" value="<?php echo h($userDisplayName); ?>" autocomplete="off" data-suggest-field="userid" data-target-hidden="filter-userid-mobile">
+                        <input id="filter-userid-mobile" type="hidden" name="userid" value="<?php echo $userId; ?>">
+                        <div class="photolist-suggestions" data-suggestions-for="userid"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="airline">
+                        <label for="filter-airline-mobile">航司</label>
+                        <input id="filter-airline-mobile" type="text" name="airline" value="<?php echo h($airline); ?>" autocomplete="off" data-suggest-field="airline">
+                        <div class="photolist-suggestions" data-suggestions-for="airline"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="aircraft_model">
+                        <label for="filter-model-mobile">机型</label>
+                        <input id="filter-model-mobile" type="text" name="aircraft_model" value="<?php echo h($aircraftModel); ?>" autocomplete="off" data-suggest-field="aircraft_model">
+                        <div class="photolist-suggestions" data-suggestions-for="aircraft_model"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="cam">
+                        <label for="filter-cam-mobile">相机</label>
+                        <input id="filter-cam-mobile" type="text" name="cam" value="<?php echo h($cam); ?>" autocomplete="off" data-suggest-field="cam">
+                        <div class="photolist-suggestions" data-suggestions-for="cam"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="lens">
+                        <label for="filter-lens-mobile">镜头</label>
+                        <input id="filter-lens-mobile" type="text" name="lens" value="<?php echo h($lens); ?>" autocomplete="off" data-suggest-field="lens">
+                        <div class="photolist-suggestions" data-suggestions-for="lens"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="iatacode">
+                        <label for="filter-location-mobile">拍摄地点</label>
+                        <input id="filter-location-mobile" type="text" name="iatacode" value="<?php echo h($iataCode); ?>" autocomplete="off" data-suggest-field="iatacode">
+                        <div class="photolist-suggestions" data-suggestions-for="iatacode"></div>
+                    </div>
+                </div>
+                <div class="photolist-filter-actions">
+                    <button class="photolist-filter-submit" type="submit">应用筛选</button>
+                    <a class="photolist-filter-reset" href="photolist.php">清空</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <?php include __DIR__ . '/src/footer.php'; ?>
+
+    <script>
+        (function () {
+            const initialSuggestions = <?php echo json_encode($initialSuggestions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+            const suggestUrl = new URL('api/photo_filter_suggest.php', window.location.href);
+            const forms = [document.getElementById('desktopFilterForm'), document.getElementById('mobileFilterForm')].filter(Boolean);
+            const fieldLabels = {
+                userid: '作者',
+                airline: '航司',
+                aircraft_model: '机型',
+                cam: '相机',
+                lens: '镜头',
+                iatacode: '拍摄地点'
+            };
+
+            function buildFilterParams(form) {
+                const params = new URLSearchParams();
+                ['userid', 'airline', 'aircraft_model', 'cam', 'lens', 'iatacode'].forEach((name) => {
+                    const element = form.querySelector(`[name="${name}"]`);
+                    if (element && element.value.trim() !== '') {
+                        params.set(name, element.value.trim());
+                    }
+                });
+                return params;
+            }
+
+            function renderSuggestionButtons(container, field, items, input, hiddenInput) {
+                container.innerHTML = '';
+                items.forEach((item) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'photolist-suggestion';
+                    button.textContent = `${item.label} (${item.count})`;
+                    button.addEventListener('click', () => {
+                        input.value = item.label;
+                        if (hiddenInput) {
+                            hiddenInput.value = item.value;
+                        }
+                    });
+                    container.appendChild(button);
+                });
+                if (items.length === 0) {
+                    const empty = document.createElement('span');
+                    empty.className = 'photolist-suggestion';
+                    empty.textContent = '暂无匹配';
+                    empty.style.cursor = 'default';
+                    empty.style.background = '#f3f6fb';
+                    empty.style.color = '#86909c';
+                    container.appendChild(empty);
+                }
+            }
+
+            forms.forEach((form) => {
+                form.querySelectorAll('[data-suggest-field]').forEach((input) => {
+                    const field = input.dataset.suggestField;
+                    const hiddenId = input.dataset.targetHidden || '';
+                    const hiddenInput = hiddenId ? document.getElementById(hiddenId) : null;
+                    const container = input.parentElement.querySelector(`[data-suggestions-for="${field}"]`);
+                    const bootstrapItems = initialSuggestions[field] || [];
+                    renderSuggestionButtons(container, field, bootstrapItems, input, hiddenInput);
+
+                    let timer = null;
+                    input.addEventListener('input', () => {
+                        if (hiddenInput) {
+                            hiddenInput.value = '';
+                        }
+                        clearTimeout(timer);
+                        timer = setTimeout(async () => {
+                            const params = buildFilterParams(form);
+                            params.set('field', field);
+                            params.set('q', input.value.trim());
+                            const url = new URL(suggestUrl);
+                            url.search = params.toString();
+                            try {
+                                const response = await fetch(url.toString(), {
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+                                const data = await response.json();
+                                if (!response.ok || !data.success) {
+                                    throw new Error(data.error || `${fieldLabels[field]}筛选加载失败`);
+                                }
+                                renderSuggestionButtons(container, field, data.items || [], input, hiddenInput);
+                            } catch (error) {
+                                renderSuggestionButtons(container, field, [], input, hiddenInput);
+                            }
+                        }, 220);
+                    });
+                });
+            });
+
+            const mobileFab = document.getElementById('mobileFilterFab');
+            const mobileModal = document.getElementById('mobileFilterModal');
+            const mobileClose = document.getElementById('mobileFilterClose');
+            if (mobileFab && mobileModal && mobileClose) {
+                mobileFab.addEventListener('click', () => {
+                    mobileModal.hidden = false;
+                });
+                mobileClose.addEventListener('click', () => {
+                    mobileModal.hidden = true;
+                });
+                mobileModal.addEventListener('click', (event) => {
+                    if (event.target === mobileModal) {
+                        mobileModal.hidden = true;
+                    }
+                });
+            }
+        })();
+    </script>
 
     <?php if ($errorMessage === '' && !empty($photos)): ?>
         <script>

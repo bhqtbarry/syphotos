@@ -301,7 +301,94 @@ function photo_feed_fetch_top_values(PDO $pdo, int $userId, string $column, stri
             'label' => $label,
             'count' => $count,
             'percentage' => $percentage,
-            'url' => 'photolist.php?userid=' . $userId . '&' . $filterParam . '=' . urlencode($label),
+            'url' => 'photolist.php?' . $filterParam . '=' . urlencode($label),
         ];
     }, $rows);
+}
+
+function photo_feed_fetch_user_basic(PDO $pdo, int $userId): ?array
+{
+    $stmt = $pdo->prepare('SELECT id, username, created_at, last_active FROM users WHERE id = :user_id LIMIT 1');
+    $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $user ?: null;
+}
+
+function photo_feed_filters_without_field(array $filters, string $field): array
+{
+    $normalized = photo_feed_normalize_filters($filters);
+
+    if (array_key_exists($field, $normalized)) {
+        $normalized[$field] = is_int($normalized[$field]) ? 0 : '';
+    }
+
+    return $normalized;
+}
+
+function photo_feed_fetch_filter_suggestions(PDO $pdo, string $field, string $query = '', array $filters = [], int $limit = 10): array
+{
+    $normalized = photo_feed_filters_without_field($filters, $field);
+    $params = [];
+    $where = photo_feed_build_where_clause($normalized, $params);
+    $limit = max(1, min(10, $limit));
+    $query = trim($query);
+
+    if ($field === 'userid') {
+        $sql = "SELECT u.id AS value, u.username AS label, COUNT(*) AS item_count
+                FROM photos p
+                INNER JOIN users u ON p.user_id = u.id" . $where;
+
+        if ($query !== '') {
+            $sql .= " AND u.username LIKE :keyword";
+            $params[':keyword'] = '%' . $query . '%';
+        }
+
+        $sql .= " GROUP BY u.id, u.username
+                  ORDER BY item_count DESC, u.username ASC
+                  LIMIT :limit";
+    } else {
+        $fieldMap = [
+            'airline' => 'p.category',
+            'aircraft_model' => 'p.aircraft_model',
+            'cam' => 'p.Cam',
+            'lens' => 'p.Lens',
+            'iatacode' => 'p.`拍摄地点`',
+        ];
+
+        if (!isset($fieldMap[$field])) {
+            return [];
+        }
+
+        $column = $fieldMap[$field];
+        $sql = "SELECT {$column} AS value, {$column} AS label, COUNT(*) AS item_count
+                FROM photos p
+                INNER JOIN users u ON p.user_id = u.id" . $where . "
+                AND COALESCE({$column}, '') <> ''";
+
+        if ($query !== '') {
+            $sql .= " AND {$column} LIKE :keyword";
+            $params[':keyword'] = '%' . $query . '%';
+        }
+
+        $sql .= " GROUP BY {$column}
+                  ORDER BY item_count DESC, label ASC
+                  LIMIT :limit";
+    }
+
+    $stmt = $pdo->prepare($sql);
+    foreach ($params as $key => $value) {
+        $stmt->bindValue($key, $value, $key === ':user_id' ? PDO::PARAM_INT : PDO::PARAM_STR);
+    }
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return array_map(static function (array $row): array {
+        return [
+            'value' => (string) ($row['value'] ?? ''),
+            'label' => (string) ($row['label'] ?? ''),
+            'count' => (int) ($row['item_count'] ?? 0),
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
 }
