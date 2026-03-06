@@ -8,7 +8,7 @@ $field = isset($_GET['field']) ? (string) $_GET['field'] : '';
 $keyword = isset($_GET['q']) ? (string) $_GET['q'] : '';
 $filters = photo_feed_normalize_filters($_GET);
 
-$allowedFields = ['userid', 'airline', 'aircraft_model', 'cam', 'lens', 'iatacode'];
+$allowedFields = ['userid', 'airline', 'aircraft_model', 'cam', 'lens', 'registration_number', 'iatacode'];
 if (!in_array($field, $allowedFields, true)) {
     http_response_code(400);
     echo json_encode([

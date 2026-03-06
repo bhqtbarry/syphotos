@@ -38,6 +38,8 @@ function photo_feed_normalize_filters(array $input): array
         'aircraft_model' => isset($input['aircraft_model']) ? trim((string) $input['aircraft_model']) : '',
         'cam' => isset($input['cam']) ? trim((string) $input['cam']) : '',
         'lens' => isset($input['lens']) ? trim((string) $input['lens']) : '',
+        'registration_number' => isset($input['registration_number']) ? strtoupper(trim((string) $input['registration_number'])) : '',
+        'keyword' => isset($input['keyword']) ? trim((string) $input['keyword']) : '',
         'page' => $page,
         'per_page' => $perPage,
     ];
@@ -51,6 +53,8 @@ function photo_feed_build_where_clause(array $filters, array &$params): string
     $aircraftModel = (string) ($filters['aircraft_model'] ?? '');
     $cam = (string) ($filters['cam'] ?? '');
     $lens = (string) ($filters['lens'] ?? '');
+    $registrationNumber = (string) ($filters['registration_number'] ?? '');
+    $keyword = trim((string) ($filters['keyword'] ?? ''));
 
     $where = " WHERE p.approved = 1";
 
@@ -84,6 +88,25 @@ function photo_feed_build_where_clause(array $filters, array &$params): string
         $params[':lens'] = $lens;
     }
 
+    if ($registrationNumber !== '') {
+        $where .= " AND p.registration_number = :registration_number";
+        $params[':registration_number'] = $registrationNumber;
+    }
+
+    if ($keyword !== '') {
+        $where .= " AND (
+            p.title LIKE :keyword
+            OR u.username LIKE :keyword
+            OR p.category LIKE :keyword
+            OR p.aircraft_model LIKE :keyword
+            OR p.registration_number LIKE :keyword
+            OR p.Cam LIKE :keyword
+            OR p.Lens LIKE :keyword
+            OR p.`拍摄地点` LIKE :keyword
+        )";
+        $params[':keyword'] = '%' . $keyword . '%';
+    }
+
     return $where;
 }
 
@@ -112,7 +135,7 @@ function photo_feed_fetch_page(PDO $pdo, array $filters): array
     $sql = "SELECT p.*, u.username
             FROM photos p
             INNER JOIN users u ON p.user_id = u.id" . $where . "
-            ORDER BY p.created_at DESC
+            ORDER BY p.score DESC, p.`拍摄时间` DESC, p.created_at DESC
             LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($sql);
@@ -143,6 +166,8 @@ function photo_feed_build_scope(array $filters): string
         'aircraft_model=' . $normalized['aircraft_model'],
         'cam=' . $normalized['cam'],
         'lens=' . $normalized['lens'],
+        'registration_number=' . $normalized['registration_number'],
+        'keyword=' . $normalized['keyword'],
         'per_page=' . $normalized['per_page'],
     ]);
 }
@@ -171,18 +196,18 @@ function photo_feed_verify_access_signature(array $filters, int $expires, string
     return hash_equals($expected, $signature);
 }
 
-function photo_feed_build_asset_signature(string $filename, string $variant, int $expires): string
+function photo_feed_build_asset_signature(int $photoId, string $variant, int $expires): string
 {
-    return photo_feed_sign_payload('photo-asset|' . $filename . '|' . $variant . '|' . $expires);
+    return photo_feed_sign_payload('photo-asset|' . $photoId . '|' . $variant . '|' . $expires);
 }
 
 function photo_feed_build_asset_url(array $photo, string $variant = 'thumb', int $ttl = 3600): string
 {
-    $filename = (string) ($photo['filename'] ?? '');
+    $photoId = (int) ($photo['id'] ?? 0);
     $expires = time() + $ttl;
-    $signature = photo_feed_build_asset_signature($filename, $variant, $expires);
+    $signature = photo_feed_build_asset_signature($photoId, $variant, $expires);
 
-    return 'photo_asset.php?file=' . rawurlencode($filename)
+    return 'photo_asset.php?id=' . $photoId
         . '&variant=' . rawurlencode($variant)
         . '&expires=' . $expires
         . '&sig=' . rawurlencode($signature);
@@ -198,6 +223,7 @@ function photo_feed_build_photo_item(array $photo): array
         'location' => (string) ($photo['拍摄地点'] ?? ''),
         'airline' => (string) ($photo['category'] ?? ''),
         'aircraft_model' => (string) ($photo['aircraft_model'] ?? ''),
+        'registration_number' => (string) ($photo['registration_number'] ?? ''),
         'cam' => (string) ($photo['Cam'] ?? ''),
         'lens' => (string) ($photo['Lens'] ?? ''),
         'detail_url' => 'photo_detail.php?id=' . (int) $photo['id'],
@@ -253,6 +279,7 @@ function photo_feed_fetch_top_values(PDO $pdo, int $userId, string $column, stri
         'location' => ['column' => 'p.`拍摄地点`', 'filter_key' => 'iatacode'],
         'airline' => ['column' => 'p.category', 'filter_key' => 'airline'],
         'aircraft_model' => ['column' => 'p.aircraft_model', 'filter_key' => 'aircraft_model'],
+        'registration_number' => ['column' => 'p.registration_number', 'filter_key' => 'registration_number'],
         'camera' => ['column' => 'p.Cam', 'filter_key' => 'cam'],
         'lens' => ['column' => 'p.Lens', 'filter_key' => 'lens'],
     ];
@@ -352,6 +379,7 @@ function photo_feed_fetch_filter_suggestions(PDO $pdo, string $field, string $qu
         $fieldMap = [
             'airline' => 'p.category',
             'aircraft_model' => 'p.aircraft_model',
+            'registration_number' => 'p.registration_number',
             'cam' => 'p.Cam',
             'lens' => 'p.Lens',
             'iatacode' => 'p.`拍摄地点`',

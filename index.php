@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require 'stats_functions.php';
+require 'src/photo_feed_service.php';
 session_start();
 
 // 获取最新启用的公告
@@ -59,7 +60,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
 (SELECT p.*, u.username 
                                     FROM photos p 
                                     INNER JOIN users u ON p.user_id = u.id 
-                                    WHERE p.approved = 1 and score >=4                          
+                                    WHERE p.approved = 1 and score =4                          
                                     ORDER BY p.created_at DESC 
                                     LIMIT 9)
                                     union all
@@ -87,7 +88,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
         $stmt = $pdo->prepare("(SELECT p.*, u.username 
                                     FROM photos p 
                                     INNER JOIN users u ON p.user_id = u.id 
-                                    WHERE p.approved = 1 and score >=4                          
+                                    WHERE p.approved = 1 and score =4                          
                                     ORDER BY p.created_at DESC 
                                     LIMIT 9)
                                     union all
@@ -119,6 +120,49 @@ $online_admin_names = getOnlineAdminNames();
     <title>SY Photos - 首页</title>
     <!-- 引入Font Awesome图标库 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .photolist-grid-home {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            align-items: start;
+            background: #dfeeff;
+        }
+
+        .photolist-grid-home .photolist-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            background: #dfeeff;
+        }
+
+        .photolist-grid-home .photolist-card img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            transition: transform 0.25s ease;
+        }
+
+        .photolist-grid-home .photolist-card:hover img {
+            transform: scale(1.02);
+        }
+
+        @media (min-width: 768px) {
+            .photolist-grid-home {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .photolist-grid-home {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -290,7 +334,7 @@ $online_admin_names = getOnlineAdminNames();
             <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> 最新航空摄影作品
         </h2>
 
-        <div class="photo-grid">
+        <div class="photo-grid photolist-grid-home">
             <?php if (!empty($error)): ?>
                 <div class="error-message">
                     <?php echo $error; ?>
@@ -311,31 +355,7 @@ $online_admin_names = getOnlineAdminNames();
                         <p style="color: var(--text-light);">敬请期待用户上传的精彩作品</p>
                     </div>
                 <?php else: ?>
-                    <?php $counter = 0; ?>
-                    <?php foreach ($display_photos as $photo): ?>
-                        <?php
-                        $counter++;
-                        $delay = ($counter % 4) * 0.1; // 错开动画延迟，提升视觉效果
-                        ?>
-                        <div class="photo-item fade-in" style="transition-delay: <?php echo $delay; ?>s">
-                            <span class="photo-category"><?php echo ucfirst($photo['category']); ?></span>
-                            <a href="photo_detail.php?id=<?php echo $photo['id']; ?>">
-                                <div class="photo-img-container">
-                                    <img src="uploads/<?php echo htmlspecialchars($photo['filename']); ?>"
-                                        alt="<?php echo htmlspecialchars($photo['title']); ?>"
-                                        loading="lazy">
-                                </div>
-                            </a>
-                            <div class="photo-info">
-                                <h3 class="photo-title"><?php echo htmlspecialchars($photo['title']); ?></h3>
-                                <div class="photo-meta">
-                                    <span><i class="fas fa-user"></i> 作者: <?php echo htmlspecialchars($photo['username']); ?></span>
-                                    <span><i class="fas fa-plane"></i> 型号: <?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
-                                    <span><i class="fas fa-map-marker-alt"></i> 地点: <?php echo htmlspecialchars($photo['拍摄地点']); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
+                    <?php echo photo_feed_render_cards($display_photos); ?>
                 <?php endif; ?>
             <?php endif; ?>
         </div>

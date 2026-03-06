@@ -10,6 +10,8 @@ $airline = $filters['airline'];
 $aircraftModel = $filters['aircraft_model'];
 $cam = $filters['cam'];
 $lens = $filters['lens'];
+$registrationNumber = $filters['registration_number'];
+$keyword = $filters['keyword'];
 $page = $filters['page'];
 $selectedUser = null;
 $userDisplayName = '';
@@ -40,6 +42,7 @@ try {
         'aircraft_model' => photo_feed_fetch_filter_suggestions($pdo, 'aircraft_model', $aircraftModel, $filters, 10),
         'cam' => photo_feed_fetch_filter_suggestions($pdo, 'cam', $cam, $filters, 10),
         'lens' => photo_feed_fetch_filter_suggestions($pdo, 'lens', $lens, $filters, 10),
+        'registration_number' => photo_feed_fetch_filter_suggestions($pdo, 'registration_number', $registrationNumber, $filters, 10),
         'iatacode' => photo_feed_fetch_filter_suggestions($pdo, 'iatacode', $iataCode, $filters, 10),
     ];
 } catch (PDOException $e) {
@@ -72,8 +75,16 @@ if ($lens !== '') {
     $pageTitleParts[] = '镜头 ' . $lens;
     $filterSummaryParts[] = '镜头 ' . $lens;
 }
+if ($registrationNumber !== '') {
+    $pageTitleParts[] = '序列号 ' . $registrationNumber;
+    $filterSummaryParts[] = '序列号 ' . $registrationNumber;
+}
 if ($iataCode !== '') {
     $filterSummaryParts[] = '拍摄地点 ' . $iataCode;
+}
+if ($keyword !== '') {
+    $pageTitleParts[] = '搜索 ' . $keyword;
+    $filterSummaryParts[] = '关键字 ' . $keyword;
 }
 if ($userId > 0) {
     $filterSummaryParts[] = '作者 ' . ($userDisplayName !== '' ? $userDisplayName : ('用户 ' . $userId));
@@ -422,10 +433,19 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                         <input id="filter-lens-desktop" type="text" name="lens" value="<?php echo h($lens); ?>" autocomplete="off" data-suggest-field="lens">
                         <div class="photolist-suggestions" data-suggestions-for="lens"></div>
                     </div>
+                    <div class="photolist-filter-group" data-field="registration_number">
+                        <label for="filter-reg-desktop">序列号</label>
+                        <input id="filter-reg-desktop" type="text" name="registration_number" value="<?php echo h($registrationNumber); ?>" autocomplete="off" data-suggest-field="registration_number">
+                        <div class="photolist-suggestions" data-suggestions-for="registration_number"></div>
+                    </div>
                     <div class="photolist-filter-group" data-field="iatacode">
                         <label for="filter-location-desktop">拍摄地点</label>
                         <input id="filter-location-desktop" type="text" name="iatacode" value="<?php echo h($iataCode); ?>" autocomplete="off" data-suggest-field="iatacode">
                         <div class="photolist-suggestions" data-suggestions-for="iatacode"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="keyword">
+                        <label for="filter-keyword-desktop">关键字搜索</label>
+                        <input id="filter-keyword-desktop" type="text" name="keyword" value="<?php echo h($keyword); ?>" autocomplete="off" placeholder="标题、作者、机型、序列号等">
                     </div>
                 </div>
                 <div class="photolist-filter-actions">
@@ -482,10 +502,19 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                         <input id="filter-lens-mobile" type="text" name="lens" value="<?php echo h($lens); ?>" autocomplete="off" data-suggest-field="lens">
                         <div class="photolist-suggestions" data-suggestions-for="lens"></div>
                     </div>
+                    <div class="photolist-filter-group" data-field="registration_number">
+                        <label for="filter-reg-mobile">序列号</label>
+                        <input id="filter-reg-mobile" type="text" name="registration_number" value="<?php echo h($registrationNumber); ?>" autocomplete="off" data-suggest-field="registration_number">
+                        <div class="photolist-suggestions" data-suggestions-for="registration_number"></div>
+                    </div>
                     <div class="photolist-filter-group" data-field="iatacode">
                         <label for="filter-location-mobile">拍摄地点</label>
                         <input id="filter-location-mobile" type="text" name="iatacode" value="<?php echo h($iataCode); ?>" autocomplete="off" data-suggest-field="iatacode">
                         <div class="photolist-suggestions" data-suggestions-for="iatacode"></div>
+                    </div>
+                    <div class="photolist-filter-group" data-field="keyword">
+                        <label for="filter-keyword-mobile">关键字搜索</label>
+                        <input id="filter-keyword-mobile" type="text" name="keyword" value="<?php echo h($keyword); ?>" autocomplete="off" placeholder="标题、作者、机型、序列号等">
                     </div>
                 </div>
                 <div class="photolist-filter-actions">
@@ -509,12 +538,13 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 aircraft_model: '机型',
                 cam: '相机',
                 lens: '镜头',
+                registration_number: '序列号',
                 iatacode: '拍摄地点'
             };
 
             function buildFilterParams(form) {
                 const params = new URLSearchParams();
-                ['userid', 'airline', 'aircraft_model', 'cam', 'lens', 'iatacode'].forEach((name) => {
+                ['userid', 'airline', 'aircraft_model', 'cam', 'lens', 'registration_number', 'iatacode', 'keyword'].forEach((name) => {
                     const element = form.querySelector(`[name="${name}"]`);
                     if (element && element.value.trim() !== '') {
                         params.set(name, element.value.trim());
@@ -631,6 +661,8 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 apiUrl.searchParams.set('aircraft_model', '<?php echo h($aircraftModel); ?>');
                 apiUrl.searchParams.set('cam', '<?php echo h($cam); ?>');
                 apiUrl.searchParams.set('lens', '<?php echo h($lens); ?>');
+                apiUrl.searchParams.set('registration_number', '<?php echo h($registrationNumber); ?>');
+                apiUrl.searchParams.set('keyword', '<?php echo h($keyword); ?>');
                 apiUrl.searchParams.set('per_page', '<?php echo $filters['per_page']; ?>');
                 apiUrl.searchParams.set('expires', '<?php echo $apiAccess['expires']; ?>');
                 apiUrl.searchParams.set('sig', '<?php echo h($apiAccess['signature']); ?>');
