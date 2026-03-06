@@ -374,7 +374,7 @@ $relatedColumns = [
         }
 
         .photo-detail {
-            background-color: white;
+            background-color: #f7fbff;
             border-radius: var(--border-radius);
             box-shadow: var(--card-shadow);
             overflow: hidden;
@@ -383,22 +383,39 @@ $relatedColumns = [
             transition: var(--transition);
         }
 
-        .photo-detail:hover {
-            box-shadow: var(--hover-shadow);
+        .detail-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 18px;
+            padding: 20px;
+            align-items: start;
+        }
+
+        .summary-card,
+        .info-card,
+        .related-column {
+            background-color: white;
+            border: 1px solid #e6edff;
+            box-shadow: 0 6px 18px rgba(22, 93, 255, 0.06);
+        }
+
+        .summary-card {
+            border-radius: var(--border-radius);
+            overflow: hidden;
         }
 
         .photo-header {
-            padding: 30px;
+            padding: 24px 24px 18px;
             border-bottom: 1px solid #f0f2f5;
             background-color: white;
             position: relative;
         }
 
         .photo-title {
-            font-size: 2rem;
+            font-size: 1.8rem;
             color: var(--primary-dark);
-            margin-bottom: 15px;
-            line-height: 1.3;
+            margin-bottom: 12px;
+            line-height: 1.25;
             position: relative;
             padding-right: 120px;
         }
@@ -429,18 +446,19 @@ $relatedColumns = [
         .photo-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 25px;
+            gap: 10px 16px;
             color: var(--text-medium);
-            font-size: 0.95rem;
-            padding: 10px 0;
+            font-size: 0.92rem;
+            line-height: 1.4;
+            padding: 8px 0 10px;
             border-bottom: 1px dashed #eee;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
         .photo-meta span {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             transition: var(--transition);
         }
 
@@ -455,13 +473,13 @@ $relatedColumns = [
         }
 
         .photo-description {
-            padding: 10px 0;
+            padding: 8px 0 0;
             color: var(--text-dark);
-            line-height: 1.8;
-            font-size: 1.05rem;
+            line-height: 1.6;
+            font-size: 0.98rem;
             border-left: 3px solid var(--primary-light);
             padding-left: 15px;
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .photo-content {
@@ -529,20 +547,18 @@ $relatedColumns = [
         .photo-sidebar {
             display: flex;
             flex-direction: column;
-            gap: 25px;
+            gap: 18px;
         }
 
         .info-card {
-            background-color: var(--light-bg);
             border-radius: var(--border-radius);
-            padding: 25px;
+            padding: 20px;
             transition: var(--transition);
-            border: 1px solid #e6edff;
         }
 
         .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(22, 93, 255, 0.08);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(22, 93, 255, 0.08);
         }
 
         .info-title {
@@ -565,12 +581,12 @@ $relatedColumns = [
         }
 
         .info-list li {
-            margin-bottom: 15px;
-            padding: 8px 0;
+            margin-bottom: 0;
+            padding: 9px 0;
             border-bottom: 1px dashed #e0e6ff;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
         }
 
         .info-list li:last-child {
@@ -580,10 +596,11 @@ $relatedColumns = [
         .info-label {
             font-weight: 500;
             color: var(--text-medium);
-            flex: 0 0 120px;
+            flex: 0 0 112px;
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 0.92rem;
         }
 
         .info-label i {
@@ -596,6 +613,8 @@ $relatedColumns = [
             word-break: break-word;
             padding-left: 10px;
             position: relative;
+            font-size: 0.95rem;
+            line-height: 1.45;
         }
 
         .info-value::before {
@@ -613,16 +632,17 @@ $relatedColumns = [
         .action-buttons {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 14px;
+            padding: 18px 24px 22px;
         }
 
         .like-btn {
-            background-color: white;
+            background-color: #f7fbff;
             border: 2px solid var(--primary);
             color: var(--primary);
-            padding: 14px;
+            padding: 12px 16px;
             border-radius: var(--border-radius);
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
@@ -632,6 +652,7 @@ $relatedColumns = [
             transition: var(--transition);
             position: relative;
             overflow: hidden;
+            width: 100%;
         }
 
         .like-btn::before {
@@ -675,53 +696,37 @@ $relatedColumns = [
         }
 
         .share-title {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: var(--text-medium);
-            margin-bottom: 15px;
-            text-align: center;
-            padding: 0 10px;
-            position: relative;
-        }
-
-        .share-title::before,
-        .share-title::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            width: 30%;
-            height: 1px;
-            background-color: #e0e6ff;
-        }
-
-        .share-title::before {
-            left: 0;
-        }
-
-        .share-title::after {
-            right: 0;
+            margin-bottom: 10px;
+            font-weight: 600;
         }
 
         .share-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+            gap: 10px;
         }
 
         .share-btn {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
+            width: 100%;
+            min-height: 42px;
+            border-radius: 999px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.2rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            gap: 8px;
             text-decoration: none;
             transition: var(--transition);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
+            border: none;
+            cursor: pointer;
+            padding: 0 14px;
         }
 
         .share-btn::before {
@@ -740,12 +745,36 @@ $relatedColumns = [
         }
 
         .share-btn:hover {
-            transform: translateY(-5px) scale(1.05);
+            transform: translateY(-2px);
             box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
         }
 
         .share-weixin {
             background-color: #07C160;
+        }
+
+        .share-facebook {
+            background-color: #1877F2;
+        }
+
+        .share-x {
+            background-color: #111111;
+        }
+
+        .share-whatsapp {
+            background-color: #25D366;
+        }
+
+        .share-telegram {
+            background-color: #229ED9;
+        }
+
+        .share-linkedin {
+            background-color: #0A66C2;
+        }
+
+        .share-reddit {
+            background-color: #FF4500;
         }
 
         .share-weibo {
@@ -763,7 +792,6 @@ $relatedColumns = [
         .operation-buttons {
             display: flex;
             gap: 10px;
-            margin-top: 10px;
         }
 
         .edit-btn,
@@ -924,7 +952,7 @@ $relatedColumns = [
 
         .related-columns {
             max-width: 1200px;
-            margin: 40px auto 0;
+            margin: 20px auto 0;
             padding: 0 20px;
         }
 
@@ -935,9 +963,7 @@ $relatedColumns = [
         }
 
         .related-column {
-            background: white;
             border-radius: var(--border-radius);
-            box-shadow: var(--card-shadow);
             overflow: hidden;
         }
 
@@ -979,17 +1005,6 @@ $relatedColumns = [
             aspect-ratio: 16 / 9;
             object-fit: cover;
             background: #d9ecff;
-        }
-
-        .related-thumb-title {
-            padding: 10px 12px 12px;
-            font-size: 0.92rem;
-            line-height: 1.4;
-            color: var(--text-dark);
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
 
         .related-empty {
@@ -1174,6 +1189,36 @@ $relatedColumns = [
         }
 
         @media (max-width: 900px) {
+            .detail-layout {
+                grid-template-columns: 1fr;
+                padding: 16px;
+            }
+
+            .photo-header,
+            .action-buttons,
+            .info-card {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .photo-title {
+                font-size: 1.45rem;
+                padding-right: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .status-tag {
+                position: static;
+                transform: none;
+                width: fit-content;
+            }
+
+            .operation-buttons {
+                flex-direction: column;
+            }
+
             .related-columns-grid {
                 grid-template-columns: 1fr;
             }
@@ -1226,59 +1271,9 @@ $relatedColumns = [
 
 
 
-            <!-- 交互按钮 -->
-            <div class="action-buttons">
-                <!-- 点赞按钮 -->
-                <form method="post">
-                    <button type="submit" name="like" class="like-btn <?php echo $is_liked ? 'liked' : ''; ?>">
-                        <i class="fas fa-heart"></i>
-                        <?php echo $is_liked ? h(t('photo_detail_liked')) : h(t('photo_detail_like')); ?>
-                        (
-                        <?php echo $photo['likes'] ?? 0; ?>)
-                    </button>
-                </form>
-
-                <!-- 作者操作按钮 -->
-                <?php if (isset($_SESSION['user_id']) && $photo['user_id'] == $_SESSION['user_id']): ?>
-                    <div class="operation-buttons">
-                        <a href="edit_photo.php?id=<?php echo $photo_id; ?>" class="edit-btn">
-                            <i class="fas fa-edit"></i> <?php echo h(t('photo_detail_edit')); ?>
-                        </a>
-                        <a href="delete_photo.php?id=<?php echo $photo_id; ?>" class="delete-btn"
-                            onclick="return confirm('<?php echo h(t('photo_detail_delete_confirm')); ?>')">
-                            <i class="fas fa-trash"></i> <?php echo h(t('photo_detail_delete')); ?>
-                        </a>
-                    </div>
-                <?php endif; ?>
-
-                <!-- 分享按钮 -->
-                <div>
-                    <div class="share-title"><?php echo h(t('photo_detail_share_to')); ?></div>
-                    <div class="share-buttons">
-                        <a href="javascript:;" class="share-btn share-weixin"
-                            title="<?php echo h(t('photo_detail_share_wechat')); ?>" onclick="showWeixinQrcode()">
-                            <i class="fab fa-weixin"></i>
-                        </a>
-
-                        <a href="http://service.weibo.com/share/share.php?url=<?php echo urlencode($current_url); ?>&title=<?php echo urlencode($photo['title']); ?>"
-                            class="share-btn share-weibo" title="<?php echo h(t('photo_detail_share_weibo')); ?>"
-                            target="_blank" rel="noopener">
-                            <i class="fab fa-weibo"></i>
-                        </a>
-
-                        <a href="https://connect.qq.com/widget/shareqq/index.html?url=<?php echo urlencode($current_url); ?>&title=<?php echo urlencode($photo['title']); ?>"
-                            class="share-btn share-qq" title="<?php echo h(t('photo_detail_share_qq')); ?>" target="_blank"
-                            rel="noopener">
-                            <i class="fab fa-qq"></i>
-                        </a>
-
-                        <a href="javascript:;" class="share-btn share-link"
-                            title="<?php echo h(t('photo_detail_copy_link')); ?>" onclick="copyLink()">
-                            <i class="fas fa-link"></i>
-                        </a>
-                    </div>
-                </div>
-                <div class="photo-header">
+            <div class="detail-layout">
+                <div class="summary-card">
+                    <div class="photo-header">
                     <h1 class="photo-title">
                         <?php echo htmlspecialchars($photo['title']); ?>
                         <span
@@ -1312,6 +1307,84 @@ $relatedColumns = [
                             <strong><?php echo h(t('photo_detail_description')); ?>:</strong><?php echo nl2br(htmlspecialchars($photo['description'])); ?>
                         </div>
                     <?php endif; ?>
+                </div>
+                    <div class="action-buttons">
+                        <form method="post">
+                            <button type="submit" name="like" class="like-btn <?php echo $is_liked ? 'liked' : ''; ?>">
+                                <i class="fas fa-heart"></i>
+                                <?php echo $is_liked ? h(t('photo_detail_liked')) : h(t('photo_detail_like')); ?>
+                                (<?php echo $photo['likes'] ?? 0; ?>)
+                            </button>
+                        </form>
+
+                        <?php if (isset($_SESSION['user_id']) && $photo['user_id'] == $_SESSION['user_id']): ?>
+                            <div class="operation-buttons">
+                                <a href="edit_photo.php?id=<?php echo $photo_id; ?>" class="edit-btn">
+                                    <i class="fas fa-edit"></i> <?php echo h(t('photo_detail_edit')); ?>
+                                </a>
+                                <a href="delete_photo.php?id=<?php echo $photo_id; ?>" class="delete-btn"
+                                    onclick="return confirm('<?php echo h(t('photo_detail_delete_confirm')); ?>')">
+                                    <i class="fas fa-trash"></i> <?php echo h(t('photo_detail_delete')); ?>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+
+                        <div>
+                            <div class="share-title"><?php echo h(t('photo_detail_share_to')); ?></div>
+                            <div class="share-buttons">
+                                <button type="button" class="share-btn share-weixin" data-share="wechat"
+                                    title="<?php echo h(t('photo_detail_share_wechat')); ?>">
+                                    <i class="fab fa-weixin"></i>
+                                    <span><?php echo h(t('photo_detail_share_wechat')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-facebook" data-share="facebook"
+                                    title="<?php echo h(t('photo_detail_share_facebook')); ?>">
+                                    <i class="fab fa-facebook-f"></i>
+                                    <span><?php echo h(t('photo_detail_share_facebook')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-x" data-share="x"
+                                    title="<?php echo h(t('photo_detail_share_x')); ?>">
+                                    <i class="fab fa-x-twitter"></i>
+                                    <span><?php echo h(t('photo_detail_share_x')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-whatsapp" data-share="whatsapp"
+                                    title="<?php echo h(t('photo_detail_share_whatsapp')); ?>">
+                                    <i class="fab fa-whatsapp"></i>
+                                    <span><?php echo h(t('photo_detail_share_whatsapp')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-telegram" data-share="telegram"
+                                    title="<?php echo h(t('photo_detail_share_telegram')); ?>">
+                                    <i class="fab fa-telegram-plane"></i>
+                                    <span><?php echo h(t('photo_detail_share_telegram')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-linkedin" data-share="linkedin"
+                                    title="<?php echo h(t('photo_detail_share_linkedin')); ?>">
+                                    <i class="fab fa-linkedin-in"></i>
+                                    <span><?php echo h(t('photo_detail_share_linkedin')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-reddit" data-share="reddit"
+                                    title="<?php echo h(t('photo_detail_share_reddit')); ?>">
+                                    <i class="fab fa-reddit-alien"></i>
+                                    <span><?php echo h(t('photo_detail_share_reddit')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-weibo" data-share="weibo"
+                                    title="<?php echo h(t('photo_detail_share_weibo')); ?>">
+                                    <i class="fab fa-weibo"></i>
+                                    <span><?php echo h(t('photo_detail_share_weibo')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-qq" data-share="qq"
+                                    title="<?php echo h(t('photo_detail_share_qq')); ?>">
+                                    <i class="fab fa-qq"></i>
+                                    <span><?php echo h(t('photo_detail_share_qq')); ?></span>
+                                </button>
+                                <button type="button" class="share-btn share-link" data-share="copy"
+                                    title="<?php echo h(t('photo_detail_copy_link')); ?>">
+                                    <i class="fas fa-link"></i>
+                                    <span><?php echo h(t('photo_detail_copy_link')); ?></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="photo-sidebar">
@@ -1447,8 +1520,6 @@ $relatedColumns = [
         </div>
     </div>
 
-    </div>
-
     <section class="related-columns">
         <div class="related-columns-grid">
             <?php foreach ($relatedColumns as $column): ?>
@@ -1461,10 +1532,9 @@ $relatedColumns = [
                         <div class="related-column-list">
                             <?php foreach ($column['items'] as $item): ?>
                                 <a class="related-thumb-link" href="photo_detail.php?id=<?php echo (int) $item['id']; ?>" target="_blank"
-                                    rel="noopener noreferrer">
+                                    rel="noopener noreferrer" title="<?php echo h($item['title']); ?>">
                                     <div class="related-thumb-card">
                                         <img src="<?php echo h($item['thumb_url']); ?>" alt="<?php echo h($item['title']); ?>" loading="lazy">
-                                        <div class="related-thumb-title"><?php echo h($item['title']); ?></div>
                                     </div>
                                 </a>
                             <?php endforeach; ?>
@@ -1493,6 +1563,42 @@ $relatedColumns = [
     </div>
 
     <script>
+        const shareUrl = <?php echo json_encode($current_url, JSON_UNESCAPED_UNICODE); ?>;
+        const shareTitle = <?php echo json_encode($photo['title'], JSON_UNESCAPED_UNICODE); ?>;
+        const shareText = `${shareTitle} - SY Photos`;
+        const isMobileBrowser = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const shareTargets = {
+            weibo: {
+                web: `https://service.weibo.com/share/share.php?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`
+            },
+            qq: {
+                web: `https://connect.qq.com/widget/shareqq/index.html?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`
+            },
+            facebook: {
+                web: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+                app: `fb://facewebmodal/f?href=${encodeURIComponent(shareUrl)}`
+            },
+            x: {
+                web: `https://x.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+                app: `twitter://post?message=${encodeURIComponent(`${shareText} ${shareUrl}`)}`
+            },
+            whatsapp: {
+                web: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+                app: `whatsapp://send?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`
+            },
+            telegram: {
+                web: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+                app: `tg://msg_url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`
+            },
+            linkedin: {
+                web: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`
+            },
+            reddit: {
+                web: `https://www.reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`,
+                app: `reddit://submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}`
+            }
+        };
+
         // 导航栏滚动效果
         window.addEventListener('scroll', function () {
             const nav = document.getElementById('mainNav');
@@ -1515,22 +1621,89 @@ $relatedColumns = [
 
         // 复制链接功能
         function copyLink() {
-            const link = "<?php echo htmlspecialchars($current_url); ?>";
-            navigator.clipboard.writeText(link).then(() => {
-                // 显示临时提示
+            const showCopiedToast = () => {
                 const tempAlert = document.createElement('div');
                 tempAlert.className = 'alert-message alert-success';
                 tempAlert.textContent = <?php echo json_encode(t('photo_detail_link_copied'), JSON_UNESCAPED_UNICODE); ?>;
                 document.querySelector('.photo-detail').prepend(tempAlert);
 
-                // 自动移除
                 setTimeout(() => {
                     tempAlert.classList.add('hide');
                     setTimeout(() => tempAlert.remove(), 300);
                 }, 2000);
-            }).catch(err => {
-                alert(<?php echo json_encode(t('photo_detail_copy_failed_prefix'), JSON_UNESCAPED_UNICODE); ?> + link);
-            });
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(shareUrl).then(showCopiedToast).catch(() => fallbackCopyLink());
+                return;
+            }
+
+            fallbackCopyLink();
+        }
+
+        function fallbackCopyLink() {
+            const textarea = document.createElement('textarea');
+            textarea.value = shareUrl;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'absolute';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+
+            try {
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                const tempAlert = document.createElement('div');
+                tempAlert.className = 'alert-message alert-success';
+                tempAlert.textContent = <?php echo json_encode(t('photo_detail_link_copied'), JSON_UNESCAPED_UNICODE); ?>;
+                document.querySelector('.photo-detail').prepend(tempAlert);
+                setTimeout(() => {
+                    tempAlert.classList.add('hide');
+                    setTimeout(() => tempAlert.remove(), 300);
+                }, 2000);
+            } catch (err) {
+                document.body.removeChild(textarea);
+                alert(<?php echo json_encode(t('photo_detail_copy_failed_prefix'), JSON_UNESCAPED_UNICODE); ?> + shareUrl);
+            }
+        }
+
+        function openShareLink(target) {
+            if (target === 'copy') {
+                copyLink();
+                return;
+            }
+
+            if (target === 'wechat') {
+                if (isMobileBrowser && navigator.share) {
+                    navigator.share({
+                        title: shareTitle,
+                        text: shareText,
+                        url: shareUrl
+                    }).catch(() => {
+                    });
+                    return;
+                }
+
+                showWeixinQrcode();
+                return;
+            }
+
+            const shareTarget = shareTargets[target];
+            if (!shareTarget || !shareTarget.web) {
+                return;
+            }
+
+            if (isMobileBrowser && shareTarget.app) {
+                const fallbackTimer = window.setTimeout(() => {
+                    window.open(shareTarget.web, '_blank', 'noopener,noreferrer');
+                }, 700);
+
+                window.location.href = shareTarget.app;
+                window.setTimeout(() => window.clearTimeout(fallbackTimer), 400);
+                return;
+            }
+
+            window.open(shareTarget.web, '_blank', 'noopener,noreferrer');
         }
 
         // 显示微信分享二维码
@@ -1554,6 +1727,10 @@ $relatedColumns = [
             if (e.target === this) {
                 hideWeixinQrcode();
             }
+        });
+
+        document.querySelectorAll('[data-share]').forEach((button) => {
+            button.addEventListener('click', () => openShareLink(button.dataset.share));
         });
     </script>
     <?php include __DIR__ . '/src/footer.php'; ?>
