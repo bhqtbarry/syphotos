@@ -62,7 +62,7 @@ function renderPhotoCards(array $photos): string
     ob_start();
     foreach ($photos as $photo):
         ?>
-        <a class="photolist-card" href="photo_detail.php?id=<?php echo (int) $photo['id']; ?>" title="<?php echo htmlspecialchars($photo['title'], ENT_QUOTES, 'UTF-8'); ?>">
+        <a class="photolist-card" href="photo_detail.php?id=<?php echo (int) $photo['id']; ?>" title="<?php echo htmlspecialchars($photo['title'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener noreferrer">
             <img src="uploads/<?php echo htmlspecialchars($photo['filename'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($photo['title'], ENT_QUOTES, 'UTF-8'); ?>" loading="lazy">
         </a>
         <?php
@@ -155,7 +155,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
             display: flex;
             align-items: center;
             justify-content: center;
-            aspect-ratio: 4 / 3;
+            aspect-ratio: 16 / 9;
             overflow: hidden;
             background: #0f1724;
         }
@@ -214,7 +214,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
             }
 
             .photolist-card {
-                aspect-ratio: 16 / 10;
+                aspect-ratio: 16 / 9;
             }
         }
 
