@@ -4,23 +4,24 @@ require 'db_connect.php';
 
 $sql = "
 SELECT
+    t1.user_id,
     t1.username,
     t1.ct AS approved,
     t2.ct AS overall,
     t1.ct / NULLIF(t2.ct, 0) AS ratio
 FROM (
-    SELECT u.username, COUNT(*) AS ct
+    SELECT u.id AS user_id, u.username, COUNT(*) AS ct
     FROM www_syphotos_cn.photos p
     JOIN www_syphotos_cn.users u ON p.user_id = u.id
     WHERE p.approved = 1
-    GROUP BY u.username
+    GROUP BY u.id, u.username
 ) t1
 LEFT JOIN (
-    SELECT u.username, COUNT(*) AS ct
+    SELECT u.id AS user_id, u.username, COUNT(*) AS ct
     FROM www_syphotos_cn.photos p
     JOIN www_syphotos_cn.users u ON p.user_id = u.id
-    GROUP BY u.username
-) t2 ON t1.username = t2.username
+    GROUP BY u.id, u.username
+) t2 ON t1.user_id = t2.user_id
  where t1.ct > 30
 ORDER BY t1.ct DESC
 ";
@@ -89,7 +90,7 @@ try {
     <?php foreach ($result as $row): ?>
         <tr class="<?= $rank <= 3 ? 'top3' : '' ?>">
             <td><?= $rank ?></td>
-            <td><?= htmlspecialchars($row['username']) ?></td>
+            <td><a href="author.php?userid=<?= (int) $row['user_id'] ?>"><?= htmlspecialchars($row['username']) ?></a></td>
             <td><?= $row['approved'] ?></td>
             <td><?= $row['overall'] ?></td>
             <td>

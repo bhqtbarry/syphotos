@@ -18,9 +18,6 @@ if (isset($_SESSION['user_id'])) {
     updateUserActivity($_SESSION['user_id']);
 }
 
-// 获取已通过审核的图片数量
-$approved_photos_count = getApprovedPhotosCount();
-
 // 获取精选图片（用于轮播）
 $featured_photos = [];
 try {
@@ -107,9 +104,6 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
     }
 }
 
-// 获取在线管理员信息
-$online_admin_count = getOnlineAdmins();
-$online_admin_names = getOnlineAdminNames();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -266,8 +260,8 @@ $online_admin_names = getOnlineAdminNames();
             <!-- 搜索框上方添加标题 -->
             <div class="search-header">SY Photos - 收藏每片云端照片</div>
 
-            <form action="all_photos.php" method="GET" class="search-form">
-                <input type="text" name="search" class="search-input"
+            <form action="photolist.php" method="GET" class="search-form">
+                <input type="text" name="keyword" class="search-input"
                     placeholder="搜索图片（支持标题、作者、机型、拍摄地点）"
                     value="<?php echo htmlspecialchars($search_keyword ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 <button type="submit" class="search-btn">
@@ -280,55 +274,6 @@ $online_admin_names = getOnlineAdminNames();
 
     <!-- 主体内容 -->
     <div class="container">
-        <!-- 统计信息区域 -->
-        <div class="stats-container fade-in">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-value" id="userCount"><?php echo getTotalUsers(); ?></div>
-                <div class="stat-label">注册用户</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-value" id="reviewCount"><?php echo getPendingReviews(); ?></div>
-                <div class="stat-label">剩余审核张数</div>
-            </div>
-
-            <!-- 新增：总通过图片数量统计卡片 -->
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-images"></i>
-                </div>
-                <div class="stat-value">
-                    <?php echo number_format($approved_photos_count); ?>
-                </div>
-                <div class="stat-label">总通过图片</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                <div class="stat-value" id="adminCount"><?php echo $online_admin_count; ?></div>
-                <div class="stat-label">在线管理员</div>
-                <div class="admin-names">
-                    <?php
-                    if (!empty($online_admin_names)) {
-                        echo implode('、', $online_admin_names);
-                    } else {
-                        echo '<span style="color: var(--text-light);">暂无在线管理员</span>';
-                    }
-                    ?>
-                </div>
-            </div>
-
-            <!-- 已移除在线用户数统计卡片 -->
-        </div>
-
         <!-- 最新图片区域 -->
         <h2 class="section-title fade-in">
             <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> 最新航空摄影作品
@@ -362,7 +307,7 @@ $online_admin_names = getOnlineAdminNames();
 
         <!-- 查看更多按钮 -->
         <div class="view-more fade-in">
-            <a href="all_photos.php?<?php echo !empty($search_keyword) ? 'search=' . urlencode($search_keyword) : ''; ?>">
+            <a href="photolist.php">
                 <button class="btn">查看更多作品 <i class="fas fa-arrow-right"></i></button>
             </a>
         </div>
@@ -392,17 +337,6 @@ $online_admin_names = getOnlineAdminNames();
 
             window.addEventListener('load', function() {
                 window.dispatchEvent(new Event('scroll'));
-
-                const getCount = (id) => {
-                    const el = document.getElementById(id);
-                    return el ? parseInt(el.innerText, 10) || 0 : 0;
-                };
-
-                if (typeof animateValue === 'function') {
-                    animateValue('userCount', 0, getCount('userCount'), 1500);
-                    animateValue('reviewCount', 0, getCount('reviewCount'), 1500);
-                    animateValue('adminCount', 0, getCount('adminCount'), 1500);
-                }
 
                 if (typeof initAnnouncementModal === 'function') {
                     initAnnouncementModal();

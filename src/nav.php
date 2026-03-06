@@ -1215,7 +1215,7 @@ if (!function_exists('t')) {
 
             <div class="nav-links" id="navLinks">
                 <a href="index.php"><i class="fas fa-home"></i> <?php echo h(t('nav_home')); ?></a>
-                <a href="all_photos.php"><i class="fas fa-images"></i> <?php echo h(t('nav_all_photos')); ?></a>
+                <a href="photolist.php"><i class="fas fa-images"></i> <?php echo h(t('nav_all_photos')); ?></a>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <a href="user_center.php"><i class="fas fa-user"></i> <?php echo h(t('nav_user_center')); ?></a>
                     <a href="upload.php"><i class="fas fa-upload"></i> <?php echo h(t('nav_upload')); ?></a>

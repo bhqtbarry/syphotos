@@ -157,6 +157,7 @@ if (!$photo) {
 // 获取当前页面URL（用于分享）
 $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 $authorProfileUrl = 'author.php?userid=' . (int) ($photo['user_id'] ?? 0);
+$reviewerProfileUrl = !empty($photo['reviewer_id']) ? 'author.php?userid=' . (int) $photo['reviewer_id'] : '';
 $airlineFilterUrl = 'photolist.php?airline=' . urlencode((string) ($photo['category'] ?? ''));
 $aircraftFilterUrl = 'photolist.php?aircraft_model=' . urlencode((string) ($photo['aircraft_model'] ?? ''));
 $camFilterUrl = 'photolist.php?cam=' . urlencode((string) ($photo['Cam'] ?? ''));
@@ -1144,7 +1145,13 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                 <?php echo htmlspecialchars($photo['author_name']); ?>
                             </a></span>
                         <span><i class="fas fa-user-check"></i> 审核员:
-                            <?php echo htmlspecialchars($reviewer_name); ?></span>
+                            <?php if ($reviewerProfileUrl !== '' && !empty($photo['reviewer_name'])): ?>
+                                <a href="<?php echo htmlspecialchars($reviewerProfileUrl); ?>">
+                                    <?php echo htmlspecialchars($reviewer_name); ?>
+                                </a>
+                            <?php else: ?>
+                                <?php echo htmlspecialchars($reviewer_name); ?>
+                            <?php endif; ?></span>
                         <span><i class="fas fa-eye"></i> 浏览: <?php echo $photo['views'] ?? 0; ?></span>
                         <span><i class="fas fa-heart"></i> 点赞: <?php echo $photo['likes'] ?? 0; ?></span>
                         <span><i class="fas fa-calendar"></i> 上传时间:
@@ -1289,63 +1296,6 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
         </div>
     </div>
 
-    <!-- 相关推荐 -->
-    <div class="related-section">
-        <h2 class="section-title"><i class="fas fa-thumbs-up"></i> 相关推荐</h2>
-        <div class="related-grid">
-            <?php
-            try {
-                // 获取同分类的其他图片（排除当前图片）
-                $stmt = $pdo->prepare("SELECT id, title, filename, category, created_at, views 
-                                       FROM photos 
-                                       WHERE category = :category AND id != :current_id AND approved = 1
-                                       ORDER BY created_at DESC LIMIT 5");
-                $stmt->bindParam(':category', $photo['category']);
-                $stmt->bindParam(':current_id', $photo_id);
-                $stmt->execute();
-
-                $related_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if (count($related_photos) > 0) {
-                    foreach ($related_photos as $rp) {
-                        echo '<div class="related-item">';
-
-                        echo '<a href="photo_detail.php?id=' . $rp['id'] . '" class="related-link">';
-
-                        echo '<div class="related-img-container">';
-                        echo '<img src="uploads/' . htmlspecialchars($rp['filename']) . '" 
-                alt="' . htmlspecialchars($rp['title']) . '" 
-                class="related-img">';
-                        echo '<span class="related-category">' . htmlspecialchars($rp['category']) . '</span>';
-                        echo '</div>';
-
-                        echo '<div class="related-info">';
-                        echo '<div class="related-title">' . htmlspecialchars($rp['title']) . '</div>';
-                        echo '<div class="related-meta">';
-                        echo '<span><i class="far fa-eye"></i> ' . ($rp['views'] ?? 0) . '</span>';
-                        echo '<span><i class="far fa-calendar"></i> ' . date('m-d', strtotime($rp['created_at'])) . '</span>';
-                        echo '</div>';
-                        echo '</div>';
-
-                        echo '</a>';
-
-                        echo '</div>';
-                    }
-                } else {
-                    echo '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-medium);">';
-                    echo '<i class="fas fa-images" style="font-size: 2rem; margin-bottom: 15px; color: var(--text-light);"></i>';
-                    echo '<p>暂无相关推荐图片</p>';
-                    echo '</div>';
-                }
-            } catch (PDOException $e) {
-                // 推荐功能失败不影响主页面
-                echo '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-medium);">';
-                echo '<p>推荐加载失败</p>';
-                echo '</div>';
-            }
-            ?>
-        </div>
-    </div>
     </div>
 
 
