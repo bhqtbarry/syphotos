@@ -34,6 +34,10 @@ function photo_feed_normalize_filters(array $input): array
     return [
         'iatacode' => isset($input['iatacode']) ? strtoupper(trim((string) $input['iatacode'])) : '',
         'user_id' => isset($input['userid']) && is_numeric($input['userid']) ? (int) $input['userid'] : 0,
+        'airline' => isset($input['airline']) ? trim((string) $input['airline']) : '',
+        'aircraft_model' => isset($input['aircraft_model']) ? trim((string) $input['aircraft_model']) : '',
+        'cam' => isset($input['cam']) ? trim((string) $input['cam']) : '',
+        'lens' => isset($input['lens']) ? trim((string) $input['lens']) : '',
         'page' => $page,
         'per_page' => $perPage,
     ];
@@ -51,6 +55,26 @@ function photo_feed_build_where_clause(array $filters, array &$params): string
     if ($filters['user_id'] > 0) {
         $where .= " AND p.user_id = :user_id";
         $params[':user_id'] = $filters['user_id'];
+    }
+
+    if ($filters['airline'] !== '') {
+        $where .= " AND p.category = :airline";
+        $params[':airline'] = $filters['airline'];
+    }
+
+    if ($filters['aircraft_model'] !== '') {
+        $where .= " AND p.aircraft_model = :aircraft_model";
+        $params[':aircraft_model'] = $filters['aircraft_model'];
+    }
+
+    if ($filters['cam'] !== '') {
+        $where .= " AND p.Cam = :cam";
+        $params[':cam'] = $filters['cam'];
+    }
+
+    if ($filters['lens'] !== '') {
+        $where .= " AND p.Lens = :lens";
+        $params[':lens'] = $filters['lens'];
     }
 
     return $where;
@@ -106,6 +130,10 @@ function photo_feed_build_scope(array $filters): string
         'photo-feed',
         'iatacode=' . $filters['iatacode'],
         'user_id=' . $filters['user_id'],
+        'airline=' . $filters['airline'],
+        'aircraft_model=' . $filters['aircraft_model'],
+        'cam=' . $filters['cam'],
+        'lens=' . $filters['lens'],
         'per_page=' . $filters['per_page'],
     ]);
 }
@@ -159,8 +187,12 @@ function photo_feed_build_photo_item(array $photo): array
         'username' => (string) ($photo['username'] ?? ''),
         'user_id' => (int) ($photo['user_id'] ?? 0),
         'location' => (string) ($photo['拍摄地点'] ?? ''),
+        'airline' => (string) ($photo['category'] ?? ''),
         'aircraft_model' => (string) ($photo['aircraft_model'] ?? ''),
+        'cam' => (string) ($photo['Cam'] ?? ''),
+        'lens' => (string) ($photo['Lens'] ?? ''),
         'detail_url' => 'photo_detail.php?id=' . (int) $photo['id'],
+        'author_url' => 'author.php?userid=' . (int) ($photo['user_id'] ?? 0),
         'thumb_url' => photo_feed_build_asset_url($photo, 'thumb'),
         'original_url' => photo_feed_build_asset_url($photo, 'original'),
     ];

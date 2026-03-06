@@ -156,6 +156,12 @@ if (!$photo) {
 
 // 获取当前页面URL（用于分享）
 $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+$authorProfileUrl = 'author.php?userid=' . (int) ($photo['user_id'] ?? 0);
+$airlineFilterUrl = 'photolist.php?airline=' . urlencode((string) ($photo['category'] ?? ''));
+$aircraftFilterUrl = 'photolist.php?aircraft_model=' . urlencode((string) ($photo['aircraft_model'] ?? ''));
+$camFilterUrl = 'photolist.php?cam=' . urlencode((string) ($photo['Cam'] ?? ''));
+$lensFilterUrl = 'photolist.php?lens=' . urlencode((string) ($photo['Lens'] ?? ''));
+$locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍摄地点'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -1134,7 +1140,9 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
                     <div class="photo-meta">
                         <span><i class="fas fa-user"></i> 作者:
-                            <?php echo htmlspecialchars($photo['author_name']); ?></span>
+                            <a href="<?php echo htmlspecialchars($authorProfileUrl); ?>">
+                                <?php echo htmlspecialchars($photo['author_name']); ?>
+                            </a></span>
                         <span><i class="fas fa-user-check"></i> 审核员:
                             <?php echo htmlspecialchars($reviewer_name); ?></span>
                         <span><i class="fas fa-eye"></i> 浏览: <?php echo $photo['views'] ?? 0; ?></span>
@@ -1157,13 +1165,20 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                         <h3 class="info-title"><i class="fas fa-info-circle"></i> 详细信息</h3>
                         <ul class="info-list">
                             <li>
-                                <span class="info-label"><i class="fas fa-folder"></i> 分类</span>
-                                <span class="info-value"><?php echo htmlspecialchars($photo['category']); ?></span>
+                                <span class="info-label"><i class="fas fa-folder"></i> 航司</span>
+                                <span class="info-value">
+                                    <a href="<?php echo htmlspecialchars($airlineFilterUrl); ?>">
+                                        <?php echo htmlspecialchars($photo['category']); ?>
+                                    </a>
+                                </span>
                             </li>
                             <li>
                                 <span class="info-label"><i class="fas fa-plane"></i> 飞机型号</span>
-                                <span
-                                    class="info-value"><?php echo htmlspecialchars($photo['aircraft_model']); ?></span>
+                                <span class="info-value">
+                                    <a href="<?php echo htmlspecialchars($aircraftFilterUrl); ?>">
+                                        <?php echo htmlspecialchars($photo['aircraft_model']); ?>
+                                    </a>
+                                </span>
                             </li>
                             <li>
                                 <span class="info-label"><i class="fas fa-hashtag"></i> 注册号</span>
@@ -1174,16 +1189,38 @@ $current_url = "http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                                 <span class="info-label"><i class="fas fa-clock"></i> 拍摄时间</span>
                                 <span class="info-value"><?php echo htmlspecialchars($photo['拍摄时间']); ?></span>
                             </li>
+                            <li>
+                                <span class="info-label"><i class="fas fa-map-marker-alt"></i> 拍摄地点</span>
+                                <span class="info-value">
+                                    <a href="<?php echo htmlspecialchars($locationFilterUrl); ?>">
+                                        <?php echo htmlspecialchars($photo['拍摄地点']); ?>
+                                    </a>
+                                </span>
+                            </li>
 
                             <li>
                                 <span class="info-label"><i class="fas fa-camera"></i> 相机</span>
-                                <span
-                                    class="info-value"><?php echo !empty($photo['Cam']) ? htmlspecialchars($photo['Cam']) : '未填写'; ?></span>
+                                <span class="info-value">
+                                    <?php if (!empty($photo['Cam'])): ?>
+                                        <a href="<?php echo htmlspecialchars($camFilterUrl); ?>">
+                                            <?php echo htmlspecialchars($photo['Cam']); ?>
+                                        </a>
+                                    <?php else: ?>
+                                        未填写
+                                    <?php endif; ?>
+                                </span>
                             </li>
                             <li>
                                 <span class="info-label"><i class="fas fa-camera"></i> 镜头</span>
-                                <span
-                                    class="info-value"><?php echo !empty($photo['Lens']) ? htmlspecialchars($photo['Lens']) : '未填写'; ?></span>
+                                <span class="info-value">
+                                    <?php if (!empty($photo['Lens'])): ?>
+                                        <a href="<?php echo htmlspecialchars($lensFilterUrl); ?>">
+                                            <?php echo htmlspecialchars($photo['Lens']); ?>
+                                        </a>
+                                    <?php else: ?>
+                                        未填写
+                                    <?php endif; ?>
+                                </span>
                             </li>
                             <li>
                                 <span class="info-label"><i class="fas fa-camera"></i> 焦距</span>

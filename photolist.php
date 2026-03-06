@@ -6,6 +6,10 @@ session_start();
 $filters = photo_feed_normalize_filters($_GET);
 $iataCode = $filters['iatacode'];
 $userId = $filters['user_id'];
+$airline = $filters['airline'];
+$aircraftModel = $filters['aircraft_model'];
+$cam = $filters['cam'];
+$lens = $filters['lens'];
 $page = $filters['page'];
 
 $photos = [];
@@ -28,6 +32,29 @@ if ($iataCode !== '') {
 }
 if ($userId > 0) {
     $pageTitleParts[] = '用户 ' . $userId;
+}
+$filterSummaryParts = [];
+if ($airline !== '') {
+    $pageTitleParts[] = '航司 ' . $airline;
+    $filterSummaryParts[] = '航司 ' . $airline;
+}
+if ($aircraftModel !== '') {
+    $pageTitleParts[] = '机型 ' . $aircraftModel;
+    $filterSummaryParts[] = '机型 ' . $aircraftModel;
+}
+if ($cam !== '') {
+    $pageTitleParts[] = '相机 ' . $cam;
+    $filterSummaryParts[] = '相机 ' . $cam;
+}
+if ($lens !== '') {
+    $pageTitleParts[] = '镜头 ' . $lens;
+    $filterSummaryParts[] = '镜头 ' . $lens;
+}
+if ($iataCode !== '') {
+    $filterSummaryParts[] = '拍摄地点 ' . $iataCode;
+}
+if ($userId > 0) {
+    $filterSummaryParts[] = '用户 ID ' . $userId;
 }
 $pageTitle = implode(' - ', $pageTitleParts);
 $apiAccess = photo_feed_issue_access_signature($filters);
@@ -174,11 +201,8 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             <h1 class="photolist-title"><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
             <div class="photolist-meta">
                 共 <?php echo $totalPhotos; ?> 张图片
-                <?php if ($iataCode !== ''): ?>
-                    ，拍摄地点 <?php echo htmlspecialchars($iataCode, ENT_QUOTES, 'UTF-8'); ?>
-                <?php endif; ?>
-                <?php if ($userId > 0): ?>
-                    ，用户 ID <?php echo $userId; ?>
+                <?php if (!empty($filterSummaryParts)): ?>
+                    ，<?php echo htmlspecialchars(implode(' / ', $filterSummaryParts), ENT_QUOTES, 'UTF-8'); ?>
                 <?php endif; ?>
             </div>
         </section>
@@ -216,6 +240,10 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 const apiUrl = new URL('api/photo_feed.php', window.location.href);
                 apiUrl.searchParams.set('iatacode', '<?php echo h($iataCode); ?>');
                 apiUrl.searchParams.set('userid', '<?php echo $userId; ?>');
+                apiUrl.searchParams.set('airline', '<?php echo h($airline); ?>');
+                apiUrl.searchParams.set('aircraft_model', '<?php echo h($aircraftModel); ?>');
+                apiUrl.searchParams.set('cam', '<?php echo h($cam); ?>');
+                apiUrl.searchParams.set('lens', '<?php echo h($lens); ?>');
                 apiUrl.searchParams.set('per_page', '<?php echo $filters['per_page']; ?>');
                 apiUrl.searchParams.set('expires', '<?php echo $apiAccess['expires']; ?>');
                 apiUrl.searchParams.set('sig', '<?php echo h($apiAccess['signature']); ?>');
