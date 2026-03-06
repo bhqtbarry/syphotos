@@ -2,6 +2,7 @@
 require 'db_connect.php';
 require 'src/helpers.php';
 require 'src/i18n.php';
+require_once __DIR__ . '/src/photo_feed_service.php';
 session_start();
 
 // 初始化变量
@@ -17,7 +18,7 @@ $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['like']) && $photo_id > 0) {
     // 检查用户是否登录
     if (!isset($_SESSION['user_id'])) {
-        $_SESSION['like_error'] = "请先登录再点赞";
+        $_SESSION['like_error'] = t('photo_detail_like_login_required');
     } else {
         try {
             // 检查是否已点赞
@@ -38,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['like']) && $photo_id 
                 $update_stmt->bindParam(':id', $photo_id);
                 $update_stmt->execute();
 
-                $_SESSION['like_success'] = "已取消点赞";
+                $_SESSION['like_success'] = t('photo_detail_like_removed');
             } else {
                 // 执行点赞
                 $insert_stmt = $pdo->prepare("INSERT INTO photo_likes (user_id, photo_id, created_at) VALUES (:user_id, :photo_id, NOW())");
@@ -51,10 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['like']) && $photo_id 
                 $update_stmt->bindParam(':id', $photo_id);
                 $update_stmt->execute();
 
-                $_SESSION['like_success'] = "点赞成功！";
+                $_SESSION['like_success'] = t('photo_detail_like_success');
             }
         } catch (PDOException $e) {
-            $_SESSION['like_error'] = "操作失败：" . $e->getMessage();
+            $_SESSION['like_error'] = t('photo_detail_action_failed_prefix') . $e->getMessage();
         }
     }
 
@@ -142,7 +143,7 @@ if ($photo_id > 0) {
             $is_liked = $stmt->fetch(PDO::FETCH_ASSOC) ? true : false;
         }
     } catch (PDOException $e) {
-        echo "<div class='error-message'>获取图片详情失败: " . $e->getMessage() . "</div>";
+        echo "<div class='error-message'>" . h(t('photo_detail_load_failed_prefix')) . h($e->getMessage()) . "</div>";
     }
 }
 
@@ -164,7 +165,69 @@ $airlineFilterUrl = 'photolist.php?airline=' . urlencode((string) ($photo['categ
 $aircraftFilterUrl = 'photolist.php?aircraft_model=' . urlencode((string) ($photo['aircraft_model'] ?? ''));
 $camFilterUrl = 'photolist.php?cam=' . urlencode((string) ($photo['Cam'] ?? ''));
 $lensFilterUrl = 'photolist.php?lens=' . urlencode((string) ($photo['Lens'] ?? ''));
+$registrationFilterUrl = 'photolist.php?registration_number=' . urlencode((string) ($photo['registration_number'] ?? ''));
 $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍摄地点'] ?? ''));
+
+function fetch_photo_detail_related_items(PDO $pdo, string $field, string|int $value, int $photoId): array
+{
+    if ($value === '' || $value === 0) {
+        return [];
+    }
+
+    $allowedFields = [
+        'registration_number' => 'p.registration_number',
+        'location' => 'p.`拍摄地点`',
+        'user_id' => 'p.user_id',
+    ];
+
+    if (!isset($allowedFields[$field])) {
+        return [];
+    }
+
+    $sql = "SELECT p.id, p.title, p.filename, u.username
+            FROM photos p
+            INNER JOIN users u ON p.user_id = u.id
+            WHERE p.approved = 1
+              AND p.id <> :photo_id
+              AND {$allowedFields[$field]} = :field_value
+            ORDER BY p.score DESC, p.`拍摄时间` DESC, p.created_at DESC
+            LIMIT 3";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(':photo_id', $photoId, PDO::PARAM_INT);
+    if ($field === 'user_id') {
+        $stmt->bindValue(':field_value', (int) $value, PDO::PARAM_INT);
+    } else {
+        $stmt->bindValue(':field_value', (string) $value, PDO::PARAM_STR);
+    }
+    $stmt->execute();
+
+    $items = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
+        $item['thumb_url'] = photo_feed_build_asset_url($item, 'thumb');
+        $items[] = $item;
+    }
+
+    return $items;
+}
+
+$relatedColumns = [
+    [
+        'title' => t('photo_detail_same_registration'),
+        'link' => $registrationFilterUrl,
+        'items' => fetch_photo_detail_related_items($pdo, 'registration_number', (string) ($photo['registration_number'] ?? ''), $photo_id),
+    ],
+    [
+        'title' => t('photo_detail_same_airport'),
+        'link' => $locationFilterUrl,
+        'items' => fetch_photo_detail_related_items($pdo, 'location', (string) ($photo['拍摄地点'] ?? ''), $photo_id),
+    ],
+    [
+        'title' => t('photo_detail_same_author'),
+        'link' => 'photolist.php?userid=' . (int) ($photo['user_id'] ?? 0),
+        'items' => fetch_photo_detail_related_items($pdo, 'user_id', (int) ($photo['user_id'] ?? 0), $photo_id),
+    ],
+];
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo h(current_locale()); ?>">
@@ -859,6 +922,82 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
             gap: 5px;
         }
 
+        .related-columns {
+            max-width: 1200px;
+            margin: 40px auto 0;
+            padding: 0 20px;
+        }
+
+        .related-columns-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .related-column {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .related-column-header {
+            display: block;
+            padding: 14px 18px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            text-decoration: none;
+            border-bottom: 1px solid #e5edf8;
+            background: linear-gradient(180deg, #f7fbff 0%, #edf5ff 100%);
+        }
+
+        .related-column-header:hover {
+            color: var(--primary);
+        }
+
+        .related-column-list {
+            display: grid;
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .related-thumb-link {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .related-thumb-card {
+            background: #eaf4ff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .related-thumb-card img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            background: #d9ecff;
+        }
+
+        .related-thumb-title {
+            padding: 10px 12px 12px;
+            font-size: 0.92rem;
+            line-height: 1.4;
+            color: var(--text-dark);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .related-empty {
+            padding: 18px 16px;
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
         .alert-message {
             padding: 15px 20px;
             border-radius: var(--border-radius);
@@ -1033,6 +1172,12 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
         #weixinModal .close-btn:hover {
             background-color: var(--primary-dark);
         }
+
+        @media (max-width: 900px) {
+            .related-columns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
     <!-- 引入Font Awesome图标库 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -1045,12 +1190,13 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
     <!-- 图片内容和详情 -->
     <div class="photo-content">
         <div class="photo-image-container">
-            <a href="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>" target="_blank" title="点击查看原图">
+            <a href="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>" target="_blank"
+                title="<?php echo h(t('photo_detail_view_original')); ?>">
                 <img src="uploads/o/<?php echo htmlspecialchars($photo['filename']); ?>"
                     alt="<?php echo htmlspecialchars($photo['title']); ?>" class="photo-image">
             </a>
             <div class="image-zoom-indicator">
-                <i class="fas fa-search-plus"></i> 点击查看原图
+                <i class="fas fa-search-plus"></i> <?php echo h(t('photo_detail_view_original')); ?>
             </div>
         </div>
     </div>
@@ -1086,7 +1232,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                 <form method="post">
                     <button type="submit" name="like" class="like-btn <?php echo $is_liked ? 'liked' : ''; ?>">
                         <i class="fas fa-heart"></i>
-                        <?php echo $is_liked ? '已点赞' : '点赞'; ?>
+                        <?php echo $is_liked ? h(t('photo_detail_liked')) : h(t('photo_detail_like')); ?>
                         (
                         <?php echo $photo['likes'] ?? 0; ?>)
                     </button>
@@ -1096,38 +1242,38 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                 <?php if (isset($_SESSION['user_id']) && $photo['user_id'] == $_SESSION['user_id']): ?>
                     <div class="operation-buttons">
                         <a href="edit_photo.php?id=<?php echo $photo_id; ?>" class="edit-btn">
-                            <i class="fas fa-edit"></i> 编辑
+                            <i class="fas fa-edit"></i> <?php echo h(t('photo_detail_edit')); ?>
                         </a>
                         <a href="delete_photo.php?id=<?php echo $photo_id; ?>" class="delete-btn"
-                            onclick="return confirm('确定要删除这张图片吗？')">
-                            <i class="fas fa-trash"></i> 删除
+                            onclick="return confirm('<?php echo h(t('photo_detail_delete_confirm')); ?>')">
+                            <i class="fas fa-trash"></i> <?php echo h(t('photo_detail_delete')); ?>
                         </a>
                     </div>
                 <?php endif; ?>
 
                 <!-- 分享按钮 -->
                 <div>
-                    <div class="share-title">分享到</div>
+                    <div class="share-title"><?php echo h(t('photo_detail_share_to')); ?></div>
                     <div class="share-buttons">
-                        <!-- 微信分享 -->
-                        <a href="javascript:;" class="share-btn share-weixin" title="微信分享" onclick="showWeixinQrcode()">
+                        <a href="javascript:;" class="share-btn share-weixin"
+                            title="<?php echo h(t('photo_detail_share_wechat')); ?>" onclick="showWeixinQrcode()">
                             <i class="fab fa-weixin"></i>
                         </a>
 
-                        <!-- 微博分享 -->
                         <a href="http://service.weibo.com/share/share.php?url=<?php echo urlencode($current_url); ?>&title=<?php echo urlencode($photo['title']); ?>"
-                            class="share-btn share-weibo" title="微博分享" target="_blank" rel="noopener">
+                            class="share-btn share-weibo" title="<?php echo h(t('photo_detail_share_weibo')); ?>"
+                            target="_blank" rel="noopener">
                             <i class="fab fa-weibo"></i>
                         </a>
 
-                        <!-- QQ分享 -->
                         <a href="https://connect.qq.com/widget/shareqq/index.html?url=<?php echo urlencode($current_url); ?>&title=<?php echo urlencode($photo['title']); ?>"
-                            class="share-btn share-qq" title="QQ分享" target="_blank" rel="noopener">
+                            class="share-btn share-qq" title="<?php echo h(t('photo_detail_share_qq')); ?>" target="_blank"
+                            rel="noopener">
                             <i class="fab fa-qq"></i>
                         </a>
 
-                        <!-- 复制链接 -->
-                        <a href="javascript:;" class="share-btn share-link" title="复制链接" onclick="copyLink()">
+                        <a href="javascript:;" class="share-btn share-link"
+                            title="<?php echo h(t('photo_detail_copy_link')); ?>" onclick="copyLink()">
                             <i class="fas fa-link"></i>
                         </a>
                     </div>
@@ -1137,7 +1283,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                         <?php echo htmlspecialchars($photo['title']); ?>
                         <span
                             class="status-tag <?php echo $photo['approved'] == 1 ? 'status-approved' : 'status-unapproved'; ?>">
-                            <?php echo $photo['approved'] == 1 ? '已通过审核' : '未通过审核'; ?>
+                            <?php echo $photo['approved'] == 1 ? h(t('photo_detail_status_approved')) : h(t('photo_detail_status_unapproved')); ?>
                         </span>
                     </h1>
 
@@ -1163,7 +1309,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                     <!-- 图片描述 -->
                     <?php if (!empty($photo['description'])): ?>
                         <div class="photo-description">
-                            <strong><?php echo h(t('photo_detail_description')); ?>：</strong><?php echo nl2br(htmlspecialchars($photo['description'])); ?>
+                            <strong><?php echo h(t('photo_detail_description')); ?>:</strong><?php echo nl2br(htmlspecialchars($photo['description'])); ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -1174,7 +1320,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                         <h3 class="info-title"><i class="fas fa-info-circle"></i> <?php echo h(t('photo_detail_info')); ?></h3>
                         <ul class="info-list">
                             <li>
-                                <span class="info-label"><i class="fas fa-folder"></i> 航司</span>
+                                <span class="info-label"><i class="fas fa-folder"></i> <?php echo h(t('photo_detail_airline')); ?></span>
                                 <span class="info-value">
                                     <a href="<?php echo htmlspecialchars($airlineFilterUrl); ?>">
                                         <?php echo htmlspecialchars($photo['category']); ?>
@@ -1182,7 +1328,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                 </span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-plane"></i> 飞机型号</span>
+                                <span class="info-label"><i class="fas fa-plane"></i> <?php echo h(t('photo_detail_model')); ?></span>
                                 <span class="info-value">
                                     <a href="<?php echo htmlspecialchars($aircraftFilterUrl); ?>">
                                         <?php echo htmlspecialchars($photo['aircraft_model']); ?>
@@ -1190,16 +1336,19 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                 </span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-hashtag"></i> 注册号</span>
-                                <span
-                                    class="info-value"><?php echo htmlspecialchars($photo['registration_number']); ?></span>
+                                <span class="info-label"><i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_registration')); ?></span>
+                                <span class="info-value">
+                                    <a href="<?php echo htmlspecialchars($registrationFilterUrl); ?>">
+                                        <?php echo htmlspecialchars($photo['registration_number']); ?>
+                                    </a>
+                                </span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-clock"></i> 拍摄时间</span>
+                                <span class="info-label"><i class="fas fa-clock"></i> <?php echo h(t('photo_detail_shot_time')); ?></span>
                                 <span class="info-value"><?php echo htmlspecialchars($photo['拍摄时间']); ?></span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-map-marker-alt"></i> 拍摄地点</span>
+                                <span class="info-label"><i class="fas fa-map-marker-alt"></i> <?php echo h(t('photo_detail_location')); ?></span>
                                 <span class="info-value">
                                     <a href="<?php echo htmlspecialchars($locationFilterUrl); ?>">
                                         <?php echo htmlspecialchars($photo['拍摄地点']); ?>
@@ -1208,7 +1357,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                             </li>
 
                             <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> 相机</span>
+                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_camera')); ?></span>
                                 <span class="info-value">
                                     <?php if (!empty($photo['Cam'])): ?>
                                         <a href="<?php echo htmlspecialchars($camFilterUrl); ?>">
@@ -1220,7 +1369,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                 </span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> 镜头</span>
+                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_lens')); ?></span>
                                 <span class="info-value">
                                     <?php if (!empty($photo['Lens'])): ?>
                                         <a href="<?php echo htmlspecialchars($lensFilterUrl); ?>">
@@ -1232,7 +1381,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                 </span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> 焦距</span>
+                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_focal_length')); ?></span>
                                 <span class="info-value"><?php echo htmlspecialchars($photo['FocalLength']); ?>
                                     mm</span>
                             </li>
@@ -1241,11 +1390,11 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                 <span class="info-value"><?php echo htmlspecialchars($photo['ISO']); ?></span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> 光圈</span>
+                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_aperture')); ?></span>
                                 <span class="info-value">f/<?php echo htmlspecialchars($photo['F']); ?></span>
                             </li>
                             <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> 快门</span>
+                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_shutter')); ?></span>
                                 <span class="info-value"><?php echo htmlspecialchars($photo['Shutter']); ?></span>
                             </li>
 
@@ -1254,7 +1403,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
 
                             <li>
                                 <span class="info-label">
-                                    <i class="fas fa-hashtag"></i> 拍摄地点在FR24上的页面
+                                    <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_location_fr24')); ?>
                                 </span>
                                 <span class="info-value">
                                     <a href="https://www.flightradar24.com/data/airports/<?php echo urlencode($photo['拍摄地点']); ?>"
@@ -1266,7 +1415,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
 
                             <li>
                                 <span class="info-label">
-                                    <i class="fas fa-hashtag"></i> FR24上最近的航班
+                                    <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_recent_fr24')); ?>
                                 </span>
                                 <span class="info-value">
                                     <a href="https://www.flightradar24.com/data/aircraft/<?php echo urlencode($photo['registration_number']); ?>"
@@ -1277,7 +1426,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                             </li>
                             <li>
                                 <span class="info-label">
-                                    <i class="fas fa-hashtag"></i> JetPhotos上的图片页面
+                                    <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_jetphotos')); ?>
                                 </span>
                                 <span class="info-value">
                                     <a href="https://www.jetphotos.com/registration/<?php echo urlencode($photo['registration_number']); ?>"
@@ -1300,19 +1449,46 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
 
     </div>
 
+    <section class="related-columns">
+        <div class="related-columns-grid">
+            <?php foreach ($relatedColumns as $column): ?>
+                <div class="related-column">
+                    <a class="related-column-header" href="<?php echo h($column['link']); ?>" target="_blank"
+                        rel="noopener noreferrer">
+                        <?php echo h($column['title']); ?>
+                    </a>
+                    <?php if (!empty($column['items'])): ?>
+                        <div class="related-column-list">
+                            <?php foreach ($column['items'] as $item): ?>
+                                <a class="related-thumb-link" href="photo_detail.php?id=<?php echo (int) $item['id']; ?>" target="_blank"
+                                    rel="noopener noreferrer">
+                                    <div class="related-thumb-card">
+                                        <img src="<?php echo h($item['thumb_url']); ?>" alt="<?php echo h($item['title']); ?>" loading="lazy">
+                                        <div class="related-thumb-title"><?php echo h($item['title']); ?></div>
+                                    </div>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="related-empty"><?php echo h(t('photo_detail_no_related')); ?></div>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
 
 
     <!-- 微信分享二维码弹窗 -->
     <div id="weixinModal">
         <div class="modal-content">
-            <h3>微信扫码分享</h3>
+            <h3><?php echo h(t('photo_detail_wechat_share')); ?></h3>
             <div class="qrcode-container">
-                <!-- 动态生成当前页面的二维码 -->
                 <img src="https://api.qrserver.com/v1/create-qr-code/?data=<?php echo urlencode($current_url); ?>&size=180x180"
-                    alt="微信分享二维码">
+                    alt="<?php echo h(t('photo_detail_wechat_share')); ?>">
             </div>
-            <p>请使用微信扫描二维码<br>分享到朋友圈或好友</p>
-            <button class="close-btn" onclick="hideWeixinQrcode()">关闭</button>
+            <p><?php echo nl2br(h(t('photo_detail_wechat_hint'))); ?></p>
+            <button class="close-btn" onclick="hideWeixinQrcode()"><?php echo h(t('photo_detail_close')); ?></button>
         </div>
     </div>
 
@@ -1344,7 +1520,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                 // 显示临时提示
                 const tempAlert = document.createElement('div');
                 tempAlert.className = 'alert-message alert-success';
-                tempAlert.textContent = '链接已复制到剪贴板！';
+                tempAlert.textContent = <?php echo json_encode(t('photo_detail_link_copied'), JSON_UNESCAPED_UNICODE); ?>;
                 document.querySelector('.photo-detail').prepend(tempAlert);
 
                 // 自动移除
@@ -1353,7 +1529,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                     setTimeout(() => tempAlert.remove(), 300);
                 }, 2000);
             }).catch(err => {
-                alert("复制失败，请手动复制：" + link);
+                alert(<?php echo json_encode(t('photo_detail_copy_failed_prefix'), JSON_UNESCAPED_UNICODE); ?> + link);
             });
         }
 
