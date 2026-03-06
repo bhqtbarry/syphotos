@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require_once __DIR__.'/src/mail.php';
+require_once __DIR__.'/src/helpers.php';
 require_once __DIR__.'/src/i18n.php';
 session_start();
 

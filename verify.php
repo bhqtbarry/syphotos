@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/config/config.php';
 require __DIR__ . '/db_connect.php';
+require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/i18n.php';
 session_start();
 ini_set('display_errors', 1);

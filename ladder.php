@@ -1,6 +1,7 @@
 <?php
 // 数据库连接
 require 'db_connect.php';
+require 'src/helpers.php';
 require 'src/i18n.php';
 session_start();
 

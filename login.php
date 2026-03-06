@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require 'stats_functions.php';
+require 'src/helpers.php';
 require 'src/i18n.php';
 session_start();
 

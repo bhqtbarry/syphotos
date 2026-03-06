@@ -2,6 +2,7 @@
 
 require __DIR__ . '/src/mail.php';
 require 'db_connect.php';
+require 'src/helpers.php';
 require 'src/i18n.php';
 session_start();
 
