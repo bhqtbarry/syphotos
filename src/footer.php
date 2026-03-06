@@ -28,8 +28,8 @@ $footerRedirect = $_SERVER['REQUEST_URI'] ?? '/';
                         <li><a href="index.php"><?php echo h(t('footer_home')); ?></a></li>
                         <li><a href="photolist.php"><?php echo h(t('footer_all_photos')); ?></a></li>
                         <li><a href="ladder.php"><?php echo h(t('footer_ladder')); ?></a></li>
-                        <li><a href="#"><?php echo h(t('footer_about_link')); ?></a></li>
-                        <li><a href="#"><?php echo h(t('footer_contact_link')); ?></a></li>
+                        <li><a href="stats.php"><?php echo h(t('footer_stats')); ?></a></li>
+                        <li><a href="map.php"><?php echo h(t('footer_map')); ?></a></li>
                     </ul>
                 </div>
 
