@@ -3,63 +3,102 @@ require 'db_connect.php';
 require 'src/photo_feed_service.php';
 session_start();
 
-$filters = photo_feed_normalize_filters($_GET);
-$iataCode = $filters['iatacode'];
-$userId = $filters['user_id'];
-$page = $filters['page'];
-
-$photos = [];
+$userId = isset($_GET['userid']) && is_numeric($_GET['userid']) ? (int) $_GET['userid'] : 0;
 $errorMessage = '';
+$author = null;
+$photos = [];
 $totalPhotos = 0;
 $hasMore = false;
+$filters = [
+    'iatacode' => '',
+    'user_id' => $userId,
+    'page' => 1,
+    'per_page' => 30,
+];
 
-try {
-    $totalPhotos = photo_feed_fetch_total($pdo, $filters);
-    $photos = photo_feed_fetch_page($pdo, $filters);
-    $offset = ($filters['page'] - 1) * $filters['per_page'];
-    $hasMore = ($offset + count($photos)) < $totalPhotos;
-} catch (PDOException $e) {
-    $errorMessage = '获取图片失败: ' . $e->getMessage();
+if ($userId <= 0) {
+    $errorMessage = '缺少有效的用户 ID。';
+} else {
+    try {
+        $author = photo_feed_fetch_user_profile($pdo, $userId);
+
+        if (!$author) {
+            $errorMessage = '作者不存在。';
+        } else {
+            $totalPhotos = photo_feed_fetch_total($pdo, $filters);
+            $photos = photo_feed_fetch_page($pdo, $filters);
+            $hasMore = count($photos) < $totalPhotos;
+        }
+    } catch (PDOException $e) {
+        $errorMessage = '获取作者信息失败: ' . $e->getMessage();
+    }
 }
 
-$pageTitleParts = ['SY Photos 图库'];
-if ($iataCode !== '') {
-    $pageTitleParts[] = $iataCode;
-}
-if ($userId > 0) {
-    $pageTitleParts[] = '用户 ' . $userId;
-}
-$pageTitle = implode(' - ', $pageTitleParts);
 $apiAccess = photo_feed_issue_access_signature($filters);
+$pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作者主页 - SY Photos';
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
+    <title><?php echo h($pageTitle); ?></title>
     <style>
-        .photolist-page {
+        .author-page {
             background: #f3f6fb;
             min-height: 100vh;
         }
 
-        .photolist-header {
-            padding: 18px 16px 14px;
-            background: #ffffff;
-            border-bottom: 1px solid #e6ebf2;
+        .author-hero {
+            padding: 24px 16px 18px;
+            background: linear-gradient(135deg, #165dff, #69b1ff);
+            color: #ffffff;
         }
 
-        .photolist-title {
+        .author-name {
             margin: 0;
-            font-size: 1.15rem;
-            color: #1d2129;
+            font-size: 1.5rem;
+            font-weight: 700;
         }
 
-        .photolist-meta {
-            margin-top: 6px;
+        .author-subtitle {
+            margin-top: 8px;
+            font-size: 0.95rem;
+            opacity: 0.92;
+        }
+
+        .author-stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .author-card {
+            padding: 14px;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 6px 18px rgba(22, 93, 255, 0.08);
+        }
+
+        .author-card-label {
             color: #4e5969;
-            font-size: 0.92rem;
+            font-size: 0.86rem;
+        }
+
+        .author-card-value {
+            margin-top: 6px;
+            color: #1d2129;
+            font-size: 1rem;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .author-section-title {
+            padding: 0 16px 12px;
+            color: #1d2129;
+            font-size: 1.02rem;
+            font-weight: 700;
         }
 
         .photolist-grid {
@@ -108,11 +147,6 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             background: #fff1f3;
         }
 
-        .photolist-loading {
-            margin-top: 12px;
-            margin-bottom: 0;
-        }
-
         .photolist-loading[hidden] {
             display: none;
         }
@@ -146,20 +180,30 @@ $apiAccess = photo_feed_issue_access_signature($filters);
         }
 
         @media (min-width: 768px) {
-            .photolist-header {
-                padding: 24px 24px 18px;
+            .author-hero {
+                padding: 34px 24px 24px;
+            }
+
+            .author-stats {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                padding: 24px;
+                gap: 16px;
+            }
+
+            .author-section-title {
+                padding: 0 24px 14px;
             }
 
             .photolist-grid {
                 grid-template-columns: repeat(5, 1fr);
             }
-
-            .photolist-card {
-                aspect-ratio: 16 / 9;
-            }
         }
 
         @media (min-width: 1200px) {
+            .author-stats {
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+            }
+
             .photolist-grid {
                 grid-template-columns: repeat(6, 1fr);
             }
@@ -169,29 +213,52 @@ $apiAccess = photo_feed_issue_access_signature($filters);
 <body>
     <?php include __DIR__ . '/src/nav.php'; ?>
 
-    <main class="photolist-page">
-        <section class="photolist-header">
-            <h1 class="photolist-title"><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <div class="photolist-meta">
-                共 <?php echo $totalPhotos; ?> 张图片
-                <?php if ($iataCode !== ''): ?>
-                    ，拍摄地点 <?php echo htmlspecialchars($iataCode, ENT_QUOTES, 'UTF-8'); ?>
-                <?php endif; ?>
-                <?php if ($userId > 0): ?>
-                    ，用户 ID <?php echo $userId; ?>
-                <?php endif; ?>
-            </div>
-        </section>
-
+    <main class="author-page">
         <?php if ($errorMessage !== ''): ?>
-            <div class="photolist-error"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></div>
-        <?php elseif (empty($photos)): ?>
-            <div class="photolist-empty">没有找到符合条件的图片。</div>
+            <div class="photolist-error"><?php echo h($errorMessage); ?></div>
         <?php else: ?>
-            <section class="photolist-grid" id="photolistGrid"><?php echo photo_feed_render_cards($photos); ?></section>
-            <div class="photolist-loading" id="photolistLoading" hidden>正在加载更多图片...</div>
-            <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了，点击回到顶部'; ?></button>
-            <div class="photolist-sentinel" id="photolistSentinel"></div>
+            <section class="author-hero">
+                <h1 class="author-name"><?php echo h($author['username']); ?></h1>
+                <div class="author-subtitle">公开作品 <?php echo (int) $totalPhotos; ?> 张</div>
+            </section>
+
+            <section class="author-stats">
+                <div class="author-card">
+                    <div class="author-card-label">上传图片数</div>
+                    <div class="author-card-value"><?php echo (int) ($author['photo_count'] ?? 0); ?></div>
+                </div>
+                <div class="author-card">
+                    <div class="author-card-label">注册时间</div>
+                    <div class="author-card-value"><?php echo !empty($author['created_at']) ? h(date('Y-m-d H:i', strtotime($author['created_at']))) : '未知'; ?></div>
+                </div>
+                <div class="author-card">
+                    <div class="author-card-label">最后活跃时间</div>
+                    <div class="author-card-value"><?php echo !empty($author['last_active']) ? h(date('Y-m-d H:i', strtotime($author['last_active']))) : '未知'; ?></div>
+                </div>
+                <div class="author-card">
+                    <div class="author-card-label">最常出现的地点</div>
+                    <div class="author-card-value"><?php echo h($author['top_location'] ?: '暂无'); ?></div>
+                </div>
+                <div class="author-card">
+                    <div class="author-card-label">最常用的相机</div>
+                    <div class="author-card-value"><?php echo h($author['top_camera'] ?: '暂无'); ?></div>
+                </div>
+                <div class="author-card">
+                    <div class="author-card-label">最常用的镜头</div>
+                    <div class="author-card-value"><?php echo h($author['top_lens'] ?: '暂无'); ?></div>
+                </div>
+            </section>
+
+            <div class="author-section-title"><?php echo h($author['username']); ?> 的照片</div>
+
+            <?php if (empty($photos)): ?>
+                <div class="photolist-empty">这个作者还没有公开图片。</div>
+            <?php else: ?>
+                <section class="photolist-grid" id="photolistGrid"><?php echo photo_feed_render_cards($photos); ?></section>
+                <div class="photolist-loading" id="photolistLoading" hidden>正在加载更多图片...</div>
+                <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了'; ?></button>
+                <div class="photolist-sentinel" id="photolistSentinel"></div>
+            <?php endif; ?>
         <?php endif; ?>
     </main>
 
@@ -205,16 +272,15 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 const loading = document.getElementById('photolistLoading');
                 const action = document.getElementById('photolistAction');
 
-                if (!grid || !sentinel || !action) {
+                if (!grid || !sentinel || !loading || !action) {
                     return;
                 }
 
-                let currentPage = <?php echo $page; ?>;
+                let currentPage = 1;
                 let isLoading = false;
                 let hasMore = <?php echo $hasMore ? 'true' : 'false'; ?>;
                 let loadFailed = false;
                 const apiUrl = new URL('api/photo_feed.php', window.location.href);
-                apiUrl.searchParams.set('iatacode', '<?php echo h($iataCode); ?>');
                 apiUrl.searchParams.set('userid', '<?php echo $userId; ?>');
                 apiUrl.searchParams.set('per_page', '<?php echo $filters['per_page']; ?>');
                 apiUrl.searchParams.set('expires', '<?php echo $apiAccess['expires']; ?>');
@@ -270,8 +336,6 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                     }
                 }
 
-                setState();
-
                 action.addEventListener('click', () => {
                     if (hasMore) {
                         loadMore();
@@ -285,6 +349,7 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 });
 
                 if (!hasMore) {
+                    setState();
                     return;
                 }
 
@@ -299,6 +364,7 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 });
 
                 observer.observe(sentinel);
+                setState();
             })();
         </script>
     <?php endif; ?>
