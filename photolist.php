@@ -214,7 +214,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
             }
 
             .photolist-card {
-                aspect-ratio: 16 / 9;
+                aspect-ratio: 16 / 10;
             }
         }
 
