@@ -68,43 +68,30 @@ html, body {
     height: calc(100vh - 120px);
 }
 
-.map-pin-wrap {
-    position: relative;
-    width: 34px;
-    height: 44px;
-}
-
 .map-pin-count {
-    position: absolute;
-    top: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 22px;
-    padding: 1px 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 9px;
     border-radius: 999px;
     background: #ffffff;
     color: #d93025;
     border: 1px solid #f2b4b0;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    font-size: 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+    font-size: 13px;
     font-weight: 700;
-    line-height: 18px;
+    line-height: 1;
     text-align: center;
+    white-space: nowrap;
 }
 
-.map-pin-dot {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    width: 18px;
-    height: 18px;
-    transform: translateX(-50%);
-    border-radius: 50% 50% 50% 0;
-    transform-origin: center;
-    rotate: -45deg;
-    background: #d93025;
-    border: 2px solid #ffffff;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22);
+.map-count-marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
 }
 </style>
 
@@ -143,23 +130,21 @@ airportData.forEach(item => {
     if (isNaN(lat) || isNaN(lng)) return;
 
     const point = new BMap.Point(lng, lat);
-    const marker = new BMap.Marker(point);
-    map.addOverlay(marker);
-
     const label = new BMap.Label(String(item.photoCount), {
         position: point,
-        offset: new BMap.Size(-10, -28)
+        offset: new BMap.Size(-16, -14)
     });
     label.setStyle({
         color: '#d93025',
         backgroundColor: '#ffffff',
         border: '1px solid #f3b2ae',
-        borderRadius: '12px',
-        padding: '2px 7px',
-        fontSize: '12px',
+        borderRadius: '999px',
+        padding: '4px 10px',
+        fontSize: '13px',
         fontWeight: '700',
         lineHeight: '18px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+        boxShadow: '0 3px 10px rgba(0,0,0,0.16)',
+        cursor: 'pointer'
     });
     map.addOverlay(label);
 
@@ -175,7 +160,7 @@ airportData.forEach(item => {
     `;
 
     const infoWindow = new BMap.InfoWindow(html);
-    marker.addEventListener("click", function () {
+    label.addEventListener("click", function () {
         map.openInfoWindow(infoWindow, point);
     });
 });
@@ -195,16 +180,11 @@ airportData.forEach(item => {
     if (isNaN(lat) || isNaN(lng)) return;
 
     const icon = L.divIcon({
-        className: '',
-        html: `
-            <div class="map-pin-wrap">
-                <div class="map-pin-count">${item.photoCount}</div>
-                <div class="map-pin-dot"></div>
-            </div>
-        `,
-        iconSize: [34, 44],
-        iconAnchor: [17, 38],
-        popupAnchor: [0, -34]
+        className: 'map-count-marker',
+        html: `<div class="map-pin-count">${item.photoCount}</div>`,
+        iconSize: [36, 28],
+        iconAnchor: [18, 14],
+        popupAnchor: [0, -12]
     });
 
     const popupHtml = `
