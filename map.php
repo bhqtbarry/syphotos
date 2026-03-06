@@ -1,5 +1,12 @@
 <?php
 require 'db_connect.php';
+require 'src/i18n.php';
+session_start();
+
+if (current_locale() !== 'zh') {
+    include __DIR__ . '/map1.php';
+    exit;
+}
 
 $sql = "
 SELECT 
@@ -10,6 +17,7 @@ SELECT
     COUNT(*) AS photoCount
 FROM photos
 INNER JOIN airport ON photos.拍摄地点 = airport.iata_code
+WHERE photos.approved = 1
 GROUP BY photos.拍摄地点
 ";
 
@@ -74,6 +82,23 @@ airportData.forEach(item => {
     const point = new BMap.Point(lng, lat);
     const marker = new BMap.Marker(point);
     map.addOverlay(marker);
+
+    const label = new BMap.Label(String(item.photoCount), {
+        position: point,
+        offset: new BMap.Size(-10, -28)
+    });
+    label.setStyle({
+        color: '#d93025',
+        backgroundColor: '#ffffff',
+        border: '1px solid #f3b2ae',
+        borderRadius: '12px',
+        padding: '2px 7px',
+        fontSize: '12px',
+        fontWeight: '700',
+        lineHeight: '18px',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+    });
+    map.addOverlay(label);
 
     const html = `
         <div style="font-size:15px">
