@@ -9,12 +9,11 @@ $author = null;
 $photos = [];
 $totalPhotos = 0;
 $hasMore = false;
-$filters = [
-    'iatacode' => '',
-    'user_id' => $userId,
+$filters = photo_feed_normalize_filters([
+    'userid' => $userId,
     'page' => 1,
     'per_page' => 30,
-];
+]);
 
 if ($userId <= 0) {
     $errorMessage = '缺少有效的用户 ID。';

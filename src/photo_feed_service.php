@@ -45,36 +45,43 @@ function photo_feed_normalize_filters(array $input): array
 
 function photo_feed_build_where_clause(array $filters, array &$params): string
 {
+    $iataCode = (string) ($filters['iatacode'] ?? '');
+    $userId = (int) ($filters['user_id'] ?? ($filters['userid'] ?? 0));
+    $airline = (string) ($filters['airline'] ?? '');
+    $aircraftModel = (string) ($filters['aircraft_model'] ?? '');
+    $cam = (string) ($filters['cam'] ?? '');
+    $lens = (string) ($filters['lens'] ?? '');
+
     $where = " WHERE p.approved = 1";
 
-    if ($filters['iatacode'] !== '') {
+    if ($iataCode !== '') {
         $where .= " AND p.`拍摄地点` = :iatacode";
-        $params[':iatacode'] = $filters['iatacode'];
+        $params[':iatacode'] = $iataCode;
     }
 
-    if ($filters['user_id'] > 0) {
+    if ($userId > 0) {
         $where .= " AND p.user_id = :user_id";
-        $params[':user_id'] = $filters['user_id'];
+        $params[':user_id'] = $userId;
     }
 
-    if ($filters['airline'] !== '') {
+    if ($airline !== '') {
         $where .= " AND p.category = :airline";
-        $params[':airline'] = $filters['airline'];
+        $params[':airline'] = $airline;
     }
 
-    if ($filters['aircraft_model'] !== '') {
+    if ($aircraftModel !== '') {
         $where .= " AND p.aircraft_model = :aircraft_model";
-        $params[':aircraft_model'] = $filters['aircraft_model'];
+        $params[':aircraft_model'] = $aircraftModel;
     }
 
-    if ($filters['cam'] !== '') {
+    if ($cam !== '') {
         $where .= " AND p.Cam = :cam";
-        $params[':cam'] = $filters['cam'];
+        $params[':cam'] = $cam;
     }
 
-    if ($filters['lens'] !== '') {
+    if ($lens !== '') {
         $where .= " AND p.Lens = :lens";
-        $params[':lens'] = $filters['lens'];
+        $params[':lens'] = $lens;
     }
 
     return $where;
@@ -126,15 +133,17 @@ function photo_feed_sign_payload(string $payload): string
 
 function photo_feed_build_scope(array $filters): string
 {
+    $normalized = photo_feed_normalize_filters($filters);
+
     return implode('|', [
         'photo-feed',
-        'iatacode=' . $filters['iatacode'],
-        'user_id=' . $filters['user_id'],
-        'airline=' . $filters['airline'],
-        'aircraft_model=' . $filters['aircraft_model'],
-        'cam=' . $filters['cam'],
-        'lens=' . $filters['lens'],
-        'per_page=' . $filters['per_page'],
+        'iatacode=' . $normalized['iatacode'],
+        'user_id=' . $normalized['user_id'],
+        'airline=' . $normalized['airline'],
+        'aircraft_model=' . $normalized['aircraft_model'],
+        'cam=' . $normalized['cam'],
+        'lens=' . $normalized['lens'],
+        'per_page=' . $normalized['per_page'],
     ]);
 }
 
