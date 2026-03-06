@@ -92,7 +92,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
 
         .photolist-card img {
             width: 100%;
-            height: 100%;
+            height: 70%;
             display: block;
             object-fit: cover;
             transition: transform 0.25s ease;
