@@ -270,7 +270,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
         <?php else: ?>
             <section class="photolist-grid" id="photolistGrid"><?php echo renderPhotoCards($photos); ?></section>
             <div class="photolist-loading" id="photolistLoading" hidden>正在加载更多图片...</div>
-            <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了'; ?></button>
+            <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了，点击回到顶部'; ?></button>
             <div class="photolist-sentinel" id="photolistSentinel"></div>
         <?php endif; ?>
     </main>
