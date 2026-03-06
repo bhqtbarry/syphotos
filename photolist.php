@@ -155,7 +155,7 @@ $pageTitle = implode(' - ', $pageTitleParts);
             display: flex;
             align-items: center;
             justify-content: center;
-            aspect-ratio: 16 / 9;
+            aspect-ratio: 16 / 10;
             overflow: hidden;
             background: #0f1724;
         }
