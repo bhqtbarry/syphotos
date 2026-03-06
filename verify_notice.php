@@ -2,9 +2,11 @@
 
 require __DIR__ . '/src/mail.php';
 require 'db_connect.php';
+require 'src/i18n.php';
+session_start();
 
 
-$message = '已发送验证邮件，请点击邮件中的链接完成注册。';
+$message = t('verify_notice_default');
 $email = trim($_GET['email'] ?? '');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -23,27 +25,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt->rowCount() > 0) {
             send_verification_email($email, $token);
-            $message = '验证邮件已重新发送，请查收。';
+            $message = t('verify_notice_resent');
         } else {
-            $message = '无法重新发送，请确认邮箱地址或账号状态。';
+            $message = t('verify_notice_failed');
         }
     } else {
-        $message = '请输入邮箱地址以重新发送验证邮件。';
+        $message = t('verify_notice_enter_email');
     }
 }
 ?>
 <!doctype html>
-<html lang="zh-CN">
+<html lang="<?php echo h(current_locale()); ?>">
 <head>
     <meta charset="UTF-8">
-    <title>邮箱验证</title>
+    <title><?php echo h(t('verify_notice_page_title')); ?></title>
 </head>
 <body>
-<h1>邮箱验证</h1>
+<h1><?php echo h(t('verify_notice_heading')); ?></h1>
 <p><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></p>
 <form method="post">
-    <input type="email" name="email" value="<?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?>" placeholder="邮箱地址" required>
-    <button type="submit">重新发送验证邮件</button>
+    <input type="email" name="email" value="<?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?>" placeholder="<?php echo h(t('verify_notice_email_placeholder')); ?>" required>
+    <button type="submit"><?php echo h(t('verify_notice_resend')); ?></button>
 </form>
 </body>
 </html>

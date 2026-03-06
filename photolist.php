@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require 'src/photo_feed_service.php';
+require 'src/i18n.php';
 session_start();
 
 $filters = photo_feed_normalize_filters($_GET);
@@ -51,7 +52,7 @@ try {
     }
 }
 
-$pageTitleParts = ['SY Photos 图库'];
+$pageTitleParts = [t('photolist_page_title')];
 if ($iataCode !== '') {
     $pageTitleParts[] = $iataCode;
 }
@@ -90,10 +91,11 @@ if ($userId > 0) {
     $filterSummaryParts[] = '作者 ' . ($userDisplayName !== '' ? $userDisplayName : ('用户 ' . $userId));
 }
 $pageTitle = implode(' - ', $pageTitleParts);
+$locale = current_locale();
 $apiAccess = photo_feed_issue_access_signature($filters);
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo h($locale); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -396,7 +398,7 @@ $apiAccess = photo_feed_issue_access_signature($filters);
         <section class="photolist-header">
             <h1 class="photolist-title"><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
             <div class="photolist-meta">
-                共 <?php echo $totalPhotos; ?> 张图片
+                <?php echo h(t('photolist_total')); ?> <?php echo $totalPhotos; ?> <?php echo h(t('photolist_photos')); ?>
                 <?php if (!empty($filterSummaryParts)): ?>
                     ，<?php echo htmlspecialchars(implode(' / ', $filterSummaryParts), ENT_QUOTES, 'UTF-8'); ?>
                 <?php endif; ?>
@@ -405,52 +407,52 @@ $apiAccess = photo_feed_issue_access_signature($filters);
 
         <section class="photolist-filter-wrap">
             <form class="photolist-filter-panel" id="desktopFilterForm" method="get" action="photolist.php">
-                <h2 class="photolist-filter-title">筛选</h2>
+                <h2 class="photolist-filter-title"><?php echo h(t('photolist_filter')); ?></h2>
                 <div class="photolist-filter-grid">
                     <div class="photolist-filter-group" data-field="userid">
-                        <label for="filter-author-desktop">作者</label>
+                        <label for="filter-author-desktop"><?php echo h(t('photolist_author')); ?></label>
                         <input id="filter-author-desktop" type="text" value="<?php echo h($userDisplayName); ?>" autocomplete="off" data-suggest-field="userid" data-target-hidden="filter-userid-desktop">
                         <input id="filter-userid-desktop" type="hidden" name="userid" value="<?php echo $userId; ?>">
                         <div class="photolist-suggestions" data-suggestions-for="userid"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="airline">
-                        <label for="filter-airline-desktop">航司</label>
+                        <label for="filter-airline-desktop"><?php echo h(t('photolist_airline')); ?></label>
                         <input id="filter-airline-desktop" type="text" name="airline" value="<?php echo h($airline); ?>" autocomplete="off" data-suggest-field="airline">
                         <div class="photolist-suggestions" data-suggestions-for="airline"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="aircraft_model">
-                        <label for="filter-model-desktop">机型</label>
+                        <label for="filter-model-desktop"><?php echo h(t('photolist_model')); ?></label>
                         <input id="filter-model-desktop" type="text" name="aircraft_model" value="<?php echo h($aircraftModel); ?>" autocomplete="off" data-suggest-field="aircraft_model">
                         <div class="photolist-suggestions" data-suggestions-for="aircraft_model"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="cam">
-                        <label for="filter-cam-desktop">相机</label>
+                        <label for="filter-cam-desktop"><?php echo h(t('photolist_camera')); ?></label>
                         <input id="filter-cam-desktop" type="text" name="cam" value="<?php echo h($cam); ?>" autocomplete="off" data-suggest-field="cam">
                         <div class="photolist-suggestions" data-suggestions-for="cam"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="lens">
-                        <label for="filter-lens-desktop">镜头</label>
+                        <label for="filter-lens-desktop"><?php echo h(t('photolist_lens')); ?></label>
                         <input id="filter-lens-desktop" type="text" name="lens" value="<?php echo h($lens); ?>" autocomplete="off" data-suggest-field="lens">
                         <div class="photolist-suggestions" data-suggestions-for="lens"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="registration_number">
-                        <label for="filter-reg-desktop">序列号</label>
+                        <label for="filter-reg-desktop"><?php echo h(t('photolist_registration')); ?></label>
                         <input id="filter-reg-desktop" type="text" name="registration_number" value="<?php echo h($registrationNumber); ?>" autocomplete="off" data-suggest-field="registration_number">
                         <div class="photolist-suggestions" data-suggestions-for="registration_number"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="iatacode">
-                        <label for="filter-location-desktop">拍摄地点</label>
+                        <label for="filter-location-desktop"><?php echo h(t('photolist_location')); ?></label>
                         <input id="filter-location-desktop" type="text" name="iatacode" value="<?php echo h($iataCode); ?>" autocomplete="off" data-suggest-field="iatacode">
                         <div class="photolist-suggestions" data-suggestions-for="iatacode"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="keyword">
-                        <label for="filter-keyword-desktop">关键字搜索</label>
-                        <input id="filter-keyword-desktop" type="text" name="keyword" value="<?php echo h($keyword); ?>" autocomplete="off" placeholder="标题、作者、机型、序列号等">
+                        <label for="filter-keyword-desktop"><?php echo h(t('photolist_keyword')); ?></label>
+                        <input id="filter-keyword-desktop" type="text" name="keyword" value="<?php echo h($keyword); ?>" autocomplete="off" placeholder="<?php echo h(t('photolist_keyword_placeholder')); ?>">
                     </div>
                 </div>
                 <div class="photolist-filter-actions">
-                    <button class="photolist-filter-submit" type="submit">应用筛选</button>
-                    <a class="photolist-filter-reset" href="photolist.php">清空</a>
+                    <button class="photolist-filter-submit" type="submit"><?php echo h(t('photolist_apply')); ?></button>
+                    <a class="photolist-filter-reset" href="photolist.php"><?php echo h(t('photolist_reset')); ?></a>
                 </div>
             </form>
         </section>
@@ -458,11 +460,11 @@ $apiAccess = photo_feed_issue_access_signature($filters);
         <?php if ($errorMessage !== ''): ?>
             <div class="photolist-error"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php elseif (empty($photos)): ?>
-            <div class="photolist-empty">没有找到符合条件的图片。</div>
+            <div class="photolist-empty"><?php echo h(t('photolist_no_results')); ?></div>
         <?php else: ?>
             <section class="photolist-grid" id="photolistGrid"><?php echo photo_feed_render_cards($photos); ?></section>
-            <div class="photolist-loading" id="photolistLoading" hidden>正在加载更多图片...</div>
-            <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了，点击回到顶部'; ?></button>
+            <div class="photolist-loading" id="photolistLoading" hidden><?php echo h(t('common_loading')); ?></div>
+            <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? h(t('common_load_more')) : h(t('common_back_to_top')); ?></button>
             <div class="photolist-sentinel" id="photolistSentinel"></div>
         <?php endif; ?>
     </main>
@@ -471,55 +473,55 @@ $apiAccess = photo_feed_issue_access_signature($filters);
     <div class="photolist-filter-modal" id="mobileFilterModal" hidden>
         <div class="photolist-filter-sheet">
             <div class="photolist-filter-sheet-header">
-                <h2 class="photolist-filter-title">筛选</h2>
+                <h2 class="photolist-filter-title"><?php echo h(t('photolist_filter')); ?></h2>
                 <button class="photolist-filter-close" id="mobileFilterClose" type="button">关闭</button>
             </div>
             <form class="photolist-filter-panel" id="mobileFilterForm" method="get" action="photolist.php">
                 <div class="photolist-filter-grid">
                     <div class="photolist-filter-group" data-field="userid">
-                        <label for="filter-author-mobile">作者</label>
+                        <label for="filter-author-mobile"><?php echo h(t('photolist_author')); ?></label>
                         <input id="filter-author-mobile" type="text" value="<?php echo h($userDisplayName); ?>" autocomplete="off" data-suggest-field="userid" data-target-hidden="filter-userid-mobile">
                         <input id="filter-userid-mobile" type="hidden" name="userid" value="<?php echo $userId; ?>">
                         <div class="photolist-suggestions" data-suggestions-for="userid"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="airline">
-                        <label for="filter-airline-mobile">航司</label>
+                        <label for="filter-airline-mobile"><?php echo h(t('photolist_airline')); ?></label>
                         <input id="filter-airline-mobile" type="text" name="airline" value="<?php echo h($airline); ?>" autocomplete="off" data-suggest-field="airline">
                         <div class="photolist-suggestions" data-suggestions-for="airline"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="aircraft_model">
-                        <label for="filter-model-mobile">机型</label>
+                        <label for="filter-model-mobile"><?php echo h(t('photolist_model')); ?></label>
                         <input id="filter-model-mobile" type="text" name="aircraft_model" value="<?php echo h($aircraftModel); ?>" autocomplete="off" data-suggest-field="aircraft_model">
                         <div class="photolist-suggestions" data-suggestions-for="aircraft_model"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="cam">
-                        <label for="filter-cam-mobile">相机</label>
+                        <label for="filter-cam-mobile"><?php echo h(t('photolist_camera')); ?></label>
                         <input id="filter-cam-mobile" type="text" name="cam" value="<?php echo h($cam); ?>" autocomplete="off" data-suggest-field="cam">
                         <div class="photolist-suggestions" data-suggestions-for="cam"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="lens">
-                        <label for="filter-lens-mobile">镜头</label>
+                        <label for="filter-lens-mobile"><?php echo h(t('photolist_lens')); ?></label>
                         <input id="filter-lens-mobile" type="text" name="lens" value="<?php echo h($lens); ?>" autocomplete="off" data-suggest-field="lens">
                         <div class="photolist-suggestions" data-suggestions-for="lens"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="registration_number">
-                        <label for="filter-reg-mobile">序列号</label>
+                        <label for="filter-reg-mobile"><?php echo h(t('photolist_registration')); ?></label>
                         <input id="filter-reg-mobile" type="text" name="registration_number" value="<?php echo h($registrationNumber); ?>" autocomplete="off" data-suggest-field="registration_number">
                         <div class="photolist-suggestions" data-suggestions-for="registration_number"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="iatacode">
-                        <label for="filter-location-mobile">拍摄地点</label>
+                        <label for="filter-location-mobile"><?php echo h(t('photolist_location')); ?></label>
                         <input id="filter-location-mobile" type="text" name="iatacode" value="<?php echo h($iataCode); ?>" autocomplete="off" data-suggest-field="iatacode">
                         <div class="photolist-suggestions" data-suggestions-for="iatacode"></div>
                     </div>
                     <div class="photolist-filter-group" data-field="keyword">
-                        <label for="filter-keyword-mobile">关键字搜索</label>
-                        <input id="filter-keyword-mobile" type="text" name="keyword" value="<?php echo h($keyword); ?>" autocomplete="off" placeholder="标题、作者、机型、序列号等">
+                        <label for="filter-keyword-mobile"><?php echo h(t('photolist_keyword')); ?></label>
+                        <input id="filter-keyword-mobile" type="text" name="keyword" value="<?php echo h($keyword); ?>" autocomplete="off" placeholder="<?php echo h(t('photolist_keyword_placeholder')); ?>">
                     </div>
                 </div>
                 <div class="photolist-filter-actions">
-                    <button class="photolist-filter-submit" type="submit">应用筛选</button>
-                    <a class="photolist-filter-reset" href="photolist.php">清空</a>
+                    <button class="photolist-filter-submit" type="submit"><?php echo h(t('photolist_apply')); ?></button>
+                    <a class="photolist-filter-reset" href="photolist.php"><?php echo h(t('photolist_reset')); ?></a>
                 </div>
             </form>
         </div>
@@ -533,13 +535,13 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             const suggestUrl = new URL('api/photo_filter_suggest.php', window.location.href);
             const forms = [document.getElementById('desktopFilterForm'), document.getElementById('mobileFilterForm')].filter(Boolean);
             const fieldLabels = {
-                userid: '作者',
-                airline: '航司',
-                aircraft_model: '机型',
-                cam: '相机',
-                lens: '镜头',
-                registration_number: '序列号',
-                iatacode: '拍摄地点'
+                userid: <?php echo json_encode(t('photolist_author'), JSON_UNESCAPED_UNICODE); ?>,
+                airline: <?php echo json_encode(t('photolist_airline'), JSON_UNESCAPED_UNICODE); ?>,
+                aircraft_model: <?php echo json_encode(t('photolist_model'), JSON_UNESCAPED_UNICODE); ?>,
+                cam: <?php echo json_encode(t('photolist_camera'), JSON_UNESCAPED_UNICODE); ?>,
+                lens: <?php echo json_encode(t('photolist_lens'), JSON_UNESCAPED_UNICODE); ?>,
+                registration_number: <?php echo json_encode(t('photolist_registration'), JSON_UNESCAPED_UNICODE); ?>,
+                iatacode: <?php echo json_encode(t('photolist_location'), JSON_UNESCAPED_UNICODE); ?>
             };
 
             function buildFilterParams(form) {
@@ -670,9 +672,9 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 function setState() {
                     loading.hidden = !isLoading;
                     action.disabled = isLoading;
-                    action.textContent = hasMore ? (isLoading ? '正在加载...' : '继续加载') : '已经到底了，点击回到顶部';
+                    action.textContent = hasMore ? (isLoading ? <?php echo json_encode(t('common_loading'), JSON_UNESCAPED_UNICODE); ?> : <?php echo json_encode(t('common_load_more'), JSON_UNESCAPED_UNICODE); ?>) : <?php echo json_encode(t('common_back_to_top'), JSON_UNESCAPED_UNICODE); ?>;
                     if (loadFailed && !isLoading && hasMore) {
-                        action.textContent = '继续加载';
+                        action.textContent = <?php echo json_encode(t('common_load_more'), JSON_UNESCAPED_UNICODE); ?>;
                     }
                     action.classList.toggle('is-end', !hasMore);
                 }
@@ -710,7 +712,7 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                         loadFailed = false;
                     } catch (error) {
                         loadFailed = true;
-                        action.textContent = error.message || '继续加载';
+                        action.textContent = error.message || <?php echo json_encode(t('common_load_more'), JSON_UNESCAPED_UNICODE); ?>;
                     } finally {
                         isLoading = false;
                         setState();

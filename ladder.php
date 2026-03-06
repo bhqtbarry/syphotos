@@ -1,6 +1,10 @@
 <?php
 // 数据库连接
 require 'db_connect.php';
+require 'src/i18n.php';
+session_start();
+
+$locale = current_locale();
 
 $sql = "
 SELECT
@@ -35,12 +39,12 @@ try {
 }
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
     <!-- 标题居中显示 -->
  
-        <title>SY Photos 排行榜</title>     
+        <title>SY Photos <?php echo h(t('ladder_page_title')); ?></title>     
 
 
     <style>
@@ -72,18 +76,18 @@ try {
 
 
 
-<h1 align="center">排行榜</h1>
+<h1 align="center"><?php echo h(t('ladder_page_title')); ?></h1>
 
 <div class="container">
 
 <?php if (!empty($result)): ?>
 <table>
     <tr>
-        <th>排名</th>
-        <th>用户名</th>
-        <th>已批准</th>
-        <th>总数</th>
-        <th>通过率</th>
+        <th><?php echo h(t('ladder_rank')); ?></th>
+        <th><?php echo h(t('ladder_username')); ?></th>
+        <th><?php echo h(t('ladder_approved')); ?></th>
+        <th><?php echo h(t('ladder_total')); ?></th>
+        <th><?php echo h(t('ladder_pass_rate')); ?></th>
     </tr>
 
     <?php $rank = 1; ?>
@@ -104,7 +108,7 @@ try {
 
 </table>
 <?php else: ?>
-    <p>无结果</p>
+    <p><?php echo h(t('ladder_no_results')); ?></p>
 <?php endif; ?>
 
 </div>

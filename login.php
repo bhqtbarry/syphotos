@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require 'stats_functions.php';
+require 'src/i18n.php';
 session_start();
 
 // -------------------------- 新增：自动读取Cookie填充用户名 --------------------------
@@ -66,13 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             //检查是否邮箱已验证（原有逻辑保留）
             if (!$user['email_verified_at']) {
-                $error = "请先<a href='verify_notice.php'>验证您的邮箱</a>后再登录。";
+                $error = t('login_error_verify_first') . " <a href='verify_notice.php'>" . h(t('verify_notice_heading')) . "</a>";
             } else {
 
 
                 // 检查用户是否被封禁（原有逻辑保留）
                 if ($user['is_banned']) {
-                    $error = "您的账户已被封禁，无法登录。如有疑问，请联系管理员。";
+                    $error = t('login_error_banned');
                 }
                 // 验证密码（原有逻辑保留）
                 elseif (password_verify($password, $user['password'])) {
@@ -123,25 +124,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     header("Location: index.php");
                     exit;
                 } else {
-                    $error = "用户名或密码不正确";
+                    $error = t('login_error_credentials');
                 }
             }
         } else {
-            $error = "用户名或密码不正确";
+            $error = t('login_error_credentials');
         }
     } catch (PDOException $e) {
-        $error = "登录失败: " . $e->getMessage();
+        $error = t('login_failed') . ' ' . $e->getMessage();
     }
 }
+$locale = current_locale();
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo h($locale); ?>">
 
 <head>
     <!-- 头部代码与原有一致，无需修改 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SY Photos 航空摄影平台 - 登录</title>
+    <title>SY Photos - <?php echo h(t('login_page_title')); ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* 原有CSS样式保留，新增"记住我"选项的样式 */
@@ -463,7 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <span class="brand-name">syphotos</span>
             </div>
 
-            <h1>欢迎回来</h1>
+            <h1><?php echo h(t('login_heading')); ?></h1>
 
             <?php if ($error): ?>
                 <div class="alert alert-error">
@@ -474,7 +476,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <form method="post">
                 <div class="form-group">
-                    <label for="username" class="form-label">用户名</label>
+                    <label for="username" class="form-label"><?php echo h(t('login_username')); ?></label>
                     <div class="input-group">
                         <i class="fas fa-user input-icon"></i>
                         <!-- -------------------------- 新增：自动填充记住的用户名 -------------------------- -->
@@ -484,7 +486,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
 
                 <div class="form-group">
-                    <label for="password" class="form-label">密码</label>
+                    <label for="password" class="form-label"><?php echo h(t('login_password')); ?></label>
                     <div class="input-group">
                         <i class="fas fa-lock input-icon"></i>
                         <input type="password" id="password" name="password" class="form-control" required>
@@ -495,28 +497,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="remember-me">
                     <input type="checkbox" id="remember_me" name="remember_me"
                         <?php echo isset($_COOKIE['remember_me']) ? 'checked' : ''; ?>>
-                    <label for="remember_me">记住我（30天内自动登录）</label>
+                    <label for="remember_me"><?php echo h(t('login_remember_me')); ?></label>
                 </div>
 
                 <div class="links">
-                    <a href="forgot_password.php" class="link">忘记密码?</a>
+                    <a href="forgot_password.php" class="link"><?php echo h(t('register_forgot_password')); ?></a>
                 </div>
 
                 <button type="submit" class="btn">
                     <i class="fas fa-sign-in-alt"></i>
-                    登录账户
+                    <?php echo h(t('login_submit')); ?>
                 </button>
             </form>
 
             <div class="divider">
-                <span class="divider-text">或者</span>
+                <span class="divider-text">OR</span>
             </div>
 
             <!-- -------------------------- 关键修改：跳转至聚合登录入口 login_redirect.php -------------------------- -->
 
             <div class="register-section">
-                还没有账号?
-                <a href="register.php" class="register-link">立即注册</a>
+                <?php echo h(t('login_no_account')); ?>
+                <a href="register.php" class="register-link"><?php echo h(t('login_register_now')); ?></a>
             </div>
         </div>
     </div>

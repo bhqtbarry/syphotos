@@ -1,16 +1,18 @@
 <?php
 require 'db_connect.php';
 require 'stats_functions.php';
+require 'src/i18n.php';
 session_start();
 
 $onlineAdminNames = getOnlineAdminNames();
+$locale = current_locale();
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SY Photos - 本站数据统计</title>
+    <title>SY Photos - <?php echo h(t('stats_page_title')); ?></title>
     <style>
         .stats-page {
             min-height: 100vh;
@@ -83,27 +85,27 @@ $onlineAdminNames = getOnlineAdminNames();
 
     <main class="stats-page">
         <section class="stats-hero">
-            <h1 class="stats-title">本站数据统计</h1>
-            <div class="stats-subtitle">查看注册用户、审核进度、通过图片和在线管理员情况。</div>
+            <h1 class="stats-title"><?php echo h(t('stats_page_title')); ?></h1>
+            <div class="stats-subtitle"><?php echo h(t('stats_page_subtitle')); ?></div>
         </section>
 
         <section class="stats-grid">
             <div class="stats-card">
-                <div class="stats-label">注册用户</div>
+                <div class="stats-label"><?php echo h(t('stats_registered_users')); ?></div>
                 <div class="stats-value"><?php echo number_format(getTotalUsers()); ?></div>
             </div>
             <div class="stats-card">
-                <div class="stats-label">剩余审核张数</div>
+                <div class="stats-label"><?php echo h(t('stats_pending_reviews')); ?></div>
                 <div class="stats-value"><?php echo number_format(getPendingReviews()); ?></div>
             </div>
             <div class="stats-card">
-                <div class="stats-label">通过图片数</div>
+                <div class="stats-label"><?php echo h(t('stats_approved_photos')); ?></div>
                 <div class="stats-value"><?php echo number_format(getApprovedPhotosCount()); ?></div>
             </div>
             <div class="stats-card">
-                <div class="stats-label">在线管理员</div>
+                <div class="stats-label"><?php echo h(t('stats_online_admins')); ?></div>
                 <div class="stats-value"><?php echo number_format(getOnlineAdmins()); ?></div>
-                <div class="stats-extra"><?php echo !empty($onlineAdminNames) ? htmlspecialchars(implode('、', $onlineAdminNames)) : '暂无在线管理员'; ?></div>
+                <div class="stats-extra"><?php echo !empty($onlineAdminNames) ? htmlspecialchars(implode('、', $onlineAdminNames)) : h(t('stats_no_online_admins')); ?></div>
             </div>
         </section>
     </main>

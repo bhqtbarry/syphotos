@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require 'src/photo_feed_service.php';
+require 'src/i18n.php';
 session_start();
 
 $userId = isset($_GET['userid']) && is_numeric($_GET['userid']) ? (int) $_GET['userid'] : 0;
@@ -21,13 +22,13 @@ $filters = photo_feed_normalize_filters([
 ]);
 
 if ($userId <= 0) {
-    $errorMessage = '缺少有效的用户 ID。';
+    $errorMessage = t('author_invalid_user');
 } else {
     try {
         $author = photo_feed_fetch_user_profile($pdo, $userId);
 
         if (!$author) {
-            $errorMessage = '作者不存在。';
+            $errorMessage = t('author_not_found');
         } else {
             $totalPhotos = photo_feed_fetch_total($pdo, $filters);
             $photos = photo_feed_fetch_page($pdo, $filters);
@@ -44,10 +45,11 @@ if ($userId <= 0) {
 }
 
 $apiAccess = photo_feed_issue_access_signature($filters);
-$pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作者主页 - SY Photos';
+$pageTitle = $author ? ($author['username'] . ' - ' . t('author_page_title') . ' - SY Photos') : (t('author_page_title') . ' - SY Photos');
+$locale = current_locale();
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo h($locale); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -255,27 +257,27 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
         <?php else: ?>
             <section class="author-hero">
                 <h1 class="author-name"><?php echo h($author['username']); ?></h1>
-                <div class="author-subtitle">公开作品 <?php echo (int) $totalPhotos; ?> 张</div>
+                <div class="author-subtitle"><?php echo h(t('author_public_works')); ?> <?php echo (int) $totalPhotos; ?> <?php echo h(t('photolist_photos')); ?></div>
             </section>
 
             <section class="author-stats">
                 <div class="author-card">
-                    <div class="author-card-label">上传图片数</div>
+                    <div class="author-card-label"><?php echo h(t('author_photo_count')); ?></div>
                     <div class="author-card-value"><?php echo (int) ($author['photo_count'] ?? 0); ?></div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">注册时间</div>
-                    <div class="author-card-value"><?php echo !empty($author['created_at']) ? h(date('Y-m-d H:i', strtotime($author['created_at']))) : '未知'; ?></div>
+                    <div class="author-card-label"><?php echo h(t('author_registered_at')); ?></div>
+                    <div class="author-card-value"><?php echo !empty($author['created_at']) ? h(date('Y-m-d H:i', strtotime($author['created_at']))) : h(t('common_unknown')); ?></div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">最后活跃时间</div>
-                    <div class="author-card-value"><?php echo !empty($author['last_active']) ? h(date('Y-m-d H:i', strtotime($author['last_active']))) : '未知'; ?></div>
+                    <div class="author-card-label"><?php echo h(t('author_last_active')); ?></div>
+                    <div class="author-card-value"><?php echo !empty($author['last_active']) ? h(date('Y-m-d H:i', strtotime($author['last_active']))) : h(t('common_unknown')); ?></div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">最常拍的航司</div>
+                    <div class="author-card-label"><?php echo h(t('author_top_airline')); ?></div>
                     <div class="author-card-value">
                         <?php if (empty($topAirlines)): ?>
-                            暂无
+                            <?php echo h(t('common_none')); ?>
                         <?php else: ?>
                             <ul class="author-top-list">
                                 <?php foreach ($topAirlines as $item): ?>
@@ -289,10 +291,10 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                     </div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">最常拍的机型</div>
+                    <div class="author-card-label"><?php echo h(t('author_top_model')); ?></div>
                     <div class="author-card-value">
                         <?php if (empty($topAircraftModels)): ?>
-                            暂无
+                            <?php echo h(t('common_none')); ?>
                         <?php else: ?>
                             <ul class="author-top-list">
                                 <?php foreach ($topAircraftModels as $item): ?>
@@ -306,10 +308,10 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                     </div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">最常出现的地点</div>
+                    <div class="author-card-label"><?php echo h(t('author_top_location')); ?></div>
                     <div class="author-card-value">
                         <?php if (empty($topLocations)): ?>
-                            暂无
+                            <?php echo h(t('common_none')); ?>
                         <?php else: ?>
                             <ul class="author-top-list">
                                 <?php foreach ($topLocations as $item): ?>
@@ -323,10 +325,10 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                     </div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">最常用的相机</div>
+                    <div class="author-card-label"><?php echo h(t('author_top_camera')); ?></div>
                     <div class="author-card-value">
                         <?php if (empty($topCameras)): ?>
-                            暂无
+                            <?php echo h(t('common_none')); ?>
                         <?php else: ?>
                             <ul class="author-top-list">
                                 <?php foreach ($topCameras as $item): ?>
@@ -340,10 +342,10 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                     </div>
                 </div>
                 <div class="author-card">
-                    <div class="author-card-label">最常用的镜头</div>
+                    <div class="author-card-label"><?php echo h(t('author_top_lens')); ?></div>
                     <div class="author-card-value">
                         <?php if (empty($topLenses)): ?>
-                            暂无
+                            <?php echo h(t('common_none')); ?>
                         <?php else: ?>
                             <ul class="author-top-list">
                                 <?php foreach ($topLenses as $item): ?>
@@ -361,11 +363,11 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
             <div class="author-section-title"><?php echo h($author['username']); ?> 的照片</div>
 
             <?php if (empty($photos)): ?>
-                <div class="photolist-empty">这个作者还没有公开图片。</div>
+                <div class="photolist-empty"><?php echo h(t('author_no_public_photos')); ?></div>
             <?php else: ?>
                 <section class="photolist-grid" id="photolistGrid"><?php echo photo_feed_render_cards($photos); ?></section>
                 <div class="photolist-loading" id="photolistLoading" hidden>正在加载更多图片...</div>
-                <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? '继续加载' : '已经到底了'; ?></button>
+                <button class="photolist-action <?php echo $hasMore ? '' : 'is-end'; ?>" id="photolistAction" type="button"><?php echo $hasMore ? h(t('common_load_more')) : h(t('common_back_to_top')); ?></button>
                 <div class="photolist-sentinel" id="photolistSentinel"></div>
             <?php endif; ?>
         <?php endif; ?>
@@ -398,9 +400,9 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                 function setState() {
                     loading.hidden = !isLoading;
                     action.disabled = isLoading;
-                    action.textContent = hasMore ? (isLoading ? '正在加载...' : '继续加载') : '已经到底了，点击回到顶部';
+                    action.textContent = hasMore ? (isLoading ? <?php echo json_encode(t('common_loading'), JSON_UNESCAPED_UNICODE); ?> : <?php echo json_encode(t('common_load_more'), JSON_UNESCAPED_UNICODE); ?>) : <?php echo json_encode(t('common_back_to_top'), JSON_UNESCAPED_UNICODE); ?>;
                     if (loadFailed && !isLoading && hasMore) {
-                        action.textContent = '继续加载';
+                        action.textContent = <?php echo json_encode(t('common_load_more'), JSON_UNESCAPED_UNICODE); ?>;
                     }
                     action.classList.toggle('is-end', !hasMore);
                 }
@@ -438,7 +440,7 @@ $pageTitle = $author ? ($author['username'] . ' 的主页 - SY Photos') : '作�
                         loadFailed = false;
                     } catch (error) {
                         loadFailed = true;
-                        action.textContent = error.message || '继续加载';
+                        action.textContent = error.message || <?php echo json_encode(t('common_load_more'), JSON_UNESCAPED_UNICODE); ?>;
                     } finally {
                         isLoading = false;
                         setState();

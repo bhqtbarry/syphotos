@@ -2,6 +2,7 @@
 require 'db_connect.php';
 require 'stats_functions.php';
 require 'src/photo_feed_service.php';
+require 'src/i18n.php';
 session_start();
 
 // 获取最新启用的公告
@@ -106,7 +107,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
 
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo h(current_locale()); ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -167,7 +168,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
                 <button class="announcement-close" id="announcementClose">&times;</button>
 
                 <div class="announcement-header">
-                    <h3 class="announcement-title"><i class="fas fa-bullhorn"></i> 系统公告</h3>
+                    <h3 class="announcement-title"><i class="fas fa-bullhorn"></i> <?php echo h(t('index_announcement')); ?></h3>
                     <div class="announcement-date" id="modalAnnouncementDate">
                         <?php echo date('Y-m-d', strtotime($announcements[0]['created_at'])); ?>
                     </div>
@@ -200,7 +201,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
                 <?php endif; ?>
 
                 <div class="announcement-actions" style="justify-content: center;">
-                    <button class="announcement-btn announcement-btn-primary" id="confirmAnnouncement">我知道了</button>
+                    <button class="announcement-btn announcement-btn-primary" id="confirmAnnouncement"><?php echo h(t('index_acknowledge')); ?></button>
                 </div>
             </div>
         </div>
@@ -262,13 +263,13 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
 
             <form action="photolist.php" method="GET" class="search-form">
                 <input type="text" name="keyword" class="search-input"
-                    placeholder="搜索图片（支持标题、作者、机型、拍摄地点）"
+                    placeholder="<?php echo h(t('index_search_placeholder')); ?>"
                     value="<?php echo htmlspecialchars($search_keyword ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 <button type="submit" class="search-btn">
-                    <i class="fas fa-search"></i> 搜索
+                    <i class="fas fa-search"></i> <?php echo h(t('index_search_button')); ?>
                 </button>
             </form>
-            <p class="search-hint">示例：波音747、北京首都机场、摄影师小李</p>
+            <p class="search-hint"><?php echo h(t('index_search_hint')); ?></p>
         </div>
     </div>
 
@@ -276,7 +277,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
     <div class="container">
         <!-- 最新图片区域 -->
         <h2 class="section-title fade-in">
-            <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> 最新航空摄影作品
+            <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> <?php echo h(t('index_latest_works')); ?>
         </h2>
 
         <div class="photo-grid photolist-grid-home">
@@ -296,8 +297,8 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
                 <?php elseif (empty($display_photos)): ?>
                     <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px;">
                         <i class="fas fa-images" style="font-size: 3rem; color: var(--text-light); margin-bottom: 20px;"></i>
-                        <h3 style="color: var(--text-medium); margin-bottom: 15px;">暂无通过审核的图片</h3>
-                        <p style="color: var(--text-light);">敬请期待用户上传的精彩作品</p>
+                        <h3 style="color: var(--text-medium); margin-bottom: 15px;"><?php echo h(t('index_no_photos')); ?></h3>
+                        <p style="color: var(--text-light);"><?php echo h(t('index_no_photos_hint')); ?></p>
                     </div>
                 <?php else: ?>
                     <?php echo photo_feed_render_cards($display_photos); ?>
@@ -308,7 +309,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
         <!-- 查看更多按钮 -->
         <div class="view-more fade-in">
             <a href="photolist.php">
-                <button class="btn">查看更多作品 <i class="fas fa-arrow-right"></i></button>
+                <button class="btn"><?php echo h(t('index_view_more')); ?> <i class="fas fa-arrow-right"></i></button>
             </a>
         </div>
     </div>

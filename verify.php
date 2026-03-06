@@ -1,11 +1,13 @@
 <?php
 require __DIR__ . '/config/config.php';
 require __DIR__ . '/db_connect.php';
+require __DIR__ . '/src/i18n.php';
+session_start();
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 $token = trim($_GET['token'] ?? '');
-$message = '无效的验证链接。';
+$message = t('verify_invalid_link');
 
 if ($token !== '') {
     $stmt = $pdo->prepare('SELECT id, verification_token_created_at, email_verified_at FROM users WHERE verification_token = :token LIMIT 1');
@@ -14,35 +16,35 @@ if ($token !== '') {
 
     if ($user) {
         if ($user['email_verified_at']) {
-            $message = '邮箱已验证，无需重复操作。';
+            $message = t('verify_already_verified');
         } else {
             $createdAt = new DateTime($user['verification_token_created_at'], new DateTimeZone('UTC'));
             $expiresAt = (clone $createdAt)->modify('+24 hours');
             $now = new DateTime('now', new DateTimeZone('UTC'));
 
             if ($now > $expiresAt) {
-                $message = '验证链接已过期，请重新发送验证邮件。';
+                $message = t('verify_expired');
             } else {
                 $update = $pdo->prepare('UPDATE users SET email_verified_at = :verified_at, verification_token = NULL, verification_token_created_at = NULL WHERE id = :id');
                 $update->execute([
                     'verified_at' => $now->format('Y-m-d H:i:s'),
                     'id' => $user['id'],
                 ]);
-                $message = '邮箱验证成功！';
+                $message = t('verify_success');
             }
         }
     }
 }
 ?>
 <!doctype html>
-<html lang="zh-CN">
+<html lang="<?php echo h(current_locale()); ?>">
 <head>
     <meta charset="UTF-8">
-    <title>邮箱验证结果</title>
+    <title><?php echo h(t('verify_page_title')); ?></title>
 </head>
 <body>
-<h1>邮箱验证</h1>
+<h1><?php echo h(t('verify_heading')); ?></h1>
 <p><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></p>
-<a href="/login.php">点击这里登录</a>
+<a href="/login.php"><?php echo h(t('verify_login_link')); ?></a>
 </body>
 </html>

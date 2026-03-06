@@ -1,6 +1,7 @@
 <?php
 require 'db_connect.php';
 require_once __DIR__.'/src/mail.php';
+require_once __DIR__.'/src/i18n.php';
 session_start();
 
 
@@ -16,9 +17,9 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     $stored_code = strtoupper($_SESSION['register_code'] ?? '');
 
     if ($stored_code === '' || $input_code === '' || !hash_equals($stored_code, $input_code)) {
-        $error = '验证码错误，请重试';
+        $error = t('register_error_captcha');
     } elseif($password != $confirm_password) {
-        $error = '两次密码输入不一致';
+        $error = t('register_error_password_mismatch');
     } else {
         try {
             // 检查用户名是否已存在
@@ -27,7 +28,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt->execute();
 
             if($stmt->fetch(PDO::FETCH_ASSOC)) {
-                $error = '用户名已存在';
+                $error = t('register_error_username_exists');
             } else {
                 // 插入新用户
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
@@ -43,23 +44,24 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt->execute();
 
                 if (send_verification_email($email, $verification_token)) {
-                    $success = '已发送验证邮件，请点击邮件中的链接完成注册';
+                    $success = t('register_success_mail_sent');
                     unset($_SESSION['register_code']);
                 } else {
-                    $error = '注册成功，但发送验证邮件失败，请稍后重试';
+                    $error = t('register_success_mail_failed');
                 }
             }
         } catch(PDOException $e) {
-            $error = "注册失败: " . $e->getMessage();
+            $error = t('register_failed') . $e->getMessage();
         }
     }
 }
+$locale = current_locale();
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo h($locale); ?>">
 <head>
     <meta charset="UTF-8">
-    <title>SY Photos - 注册</title>
+    <title>SY Photos - <?php echo h(t('register_page_title')); ?></title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f0f7ff; }
         .nav { background-color: #165DFF; padding: 10px; margin-bottom: 20px; }
@@ -78,14 +80,14 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 </head>
 <body>
     <div class="nav">
-        <a href="index.php">首页</a>
-        <a href="all_photos.php">全部图片</a>
-        <a href="login.php">登录</a>
-        <a href="register.php">注册</a>
+        <a href="index.php"><?php echo h(t('nav_home')); ?></a>
+        <a href="photolist.php"><?php echo h(t('nav_all_photos')); ?></a>
+        <a href="login.php"><?php echo h(t('login_submit')); ?></a>
+        <a href="register.php"><?php echo h(t('register_submit')); ?></a>
     </div>
 
     <div class="register-form">
-        <h2>用户注册</h2>
+        <h2><?php echo h(t('register_heading')); ?></h2>
 
         <?php if($error): ?>
             <div class="error"><?php echo $error; ?></div>
@@ -97,39 +99,39 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         <form method="post" action="register.php">
             <div class="form-group">
-                <label for="username">用户名</label>
+                <label for="username"><?php echo h(t('register_username')); ?></label>
                 <input type="text" id="username" name="username" required>
             </div>
 
             <div class="form-group">
-                <label for="email">邮箱</label>
+                <label for="email"><?php echo h(t('register_email')); ?></label>
                 <input type="email" id="email" name="email" required>
             </div>
 
             <div class="form-group">
-                <label for="password">密码</label>
+                <label for="password"><?php echo h(t('register_password')); ?></label>
                 <input type="password" id="password" name="password" required>
             </div>
 
             <div class="form-group">
-                <label for="confirm_password">确认密码</label>
+                <label for="confirm_password"><?php echo h(t('register_confirm_password')); ?></label>
                 <input type="password" id="confirm_password" name="confirm_password" required>
             </div>
 
             <div class="form-group">
-                <label for="verification_code">验证码</label>
+                <label for="verification_code"><?php echo h(t('register_verification_code')); ?></label>
                 <div class="captcha-row">
-                    <input type="text" id="verification_code" name="verification_code" placeholder="请输入图片中的字符" required>
-                    <img src="register_captcha.php?ts=<?php echo time(); ?>" alt="验证码" id="captchaImage" title="看不清？点击刷新">
+                    <input type="text" id="verification_code" name="verification_code" placeholder="<?php echo h(t('register_captcha_placeholder')); ?>" required>
+                    <img src="register_captcha.php?ts=<?php echo time(); ?>" alt="<?php echo h(t('register_verification_code')); ?>" id="captchaImage" title="<?php echo h(t('register_captcha_refresh')); ?>">
                 </div>
-                <button type="button" class="captcha-refresh" onclick="refreshCaptcha()">看不清？换一张</button>
+                <button type="button" class="captcha-refresh" onclick="refreshCaptcha()"><?php echo h(t('register_captcha_refresh')); ?></button>
             </div>
 
-            <button type="submit" class="btn">注册</button>
+            <button type="submit" class="btn"><?php echo h(t('register_submit')); ?></button>
         </form>
 
-        <p>已有账号？<a href="login.php">立即登录</a></p>
-        <p>忘记密码？<a href="forgot_password.php">找回密码</a></p>
+        <p><?php echo h(t('register_has_account')); ?><a href="login.php"><?php echo h(t('register_login_now')); ?></a></p>
+        <p><?php echo h(t('register_forgot_password')); ?><a href="forgot_password.php"><?php echo h(t('register_recover_password')); ?></a></p>
     </div>
 <script>
 function refreshCaptcha() {

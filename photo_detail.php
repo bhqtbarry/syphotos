@@ -1,12 +1,13 @@
 <?php
 require 'db_connect.php';
+require 'src/i18n.php';
 session_start();
 
 // 初始化变量
 $photo_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $photo = null;
 $is_liked = false;
-$reviewer_name = '未审核'; // 默认未审核
+$reviewer_name = t('photo_detail_unreviewed');
 // 确定用户权限状态
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] ? true : false;
 $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
@@ -127,7 +128,7 @@ if ($photo_id > 0) {
         if ($photo && !empty($photo['reviewer_name'])) {
             $reviewer_name = $photo['reviewer_name'];
         } elseif ($photo && $photo['approved'] == 1) {
-            $reviewer_name = '系统自动审核'; // 如无审核员ID但已通过，可显示此提示
+            $reviewer_name = t('photo_detail_auto_reviewed');
         }
 
         // 检查是否已点赞
@@ -148,8 +149,8 @@ if ($photo_id > 0) {
 if (!$photo) {
     echo "<div class='error-container'>";
     echo "<div class='error-icon'><i class='fas fa-exclamation-triangle'></i></div>";
-    echo "<h2>图片不存在或您没有查看权限</h2>";
-    echo "<a href='index.php' class='back-btn'>返回首页</a>";
+        echo "<h2>" . h(t('photo_detail_not_found')) . "</h2>";
+        echo "<a href='index.php' class='back-btn'>" . h(t('photo_detail_back_home')) . "</a>";
     echo "</div>";
     exit;
 }
@@ -165,7 +166,7 @@ $lensFilterUrl = 'photolist.php?lens=' . urlencode((string) ($photo['Lens'] ?? '
 $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍摄地点'] ?? ''));
 ?>
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<?php echo h(current_locale()); ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -1140,11 +1141,11 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                     </h1>
 
                     <div class="photo-meta">
-                        <span><i class="fas fa-user"></i> 作者:
+                        <span><i class="fas fa-user"></i> <?php echo h(t('photo_detail_author')); ?>:
                             <a href="<?php echo htmlspecialchars($authorProfileUrl); ?>">
                                 <?php echo htmlspecialchars($photo['author_name']); ?>
                             </a></span>
-                        <span><i class="fas fa-user-check"></i> 审核员:
+                        <span><i class="fas fa-user-check"></i> <?php echo h(t('photo_detail_reviewer')); ?>:
                             <?php if ($reviewerProfileUrl !== '' && !empty($photo['reviewer_name'])): ?>
                                 <a href="<?php echo htmlspecialchars($reviewerProfileUrl); ?>">
                                     <?php echo htmlspecialchars($reviewer_name); ?>
@@ -1152,16 +1153,16 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                             <?php else: ?>
                                 <?php echo htmlspecialchars($reviewer_name); ?>
                             <?php endif; ?></span>
-                        <span><i class="fas fa-eye"></i> 浏览: <?php echo $photo['views'] ?? 0; ?></span>
-                        <span><i class="fas fa-heart"></i> 点赞: <?php echo $photo['likes'] ?? 0; ?></span>
-                        <span><i class="fas fa-calendar"></i> 上传时间:
+                        <span><i class="fas fa-eye"></i> <?php echo h(t('photo_detail_views')); ?>: <?php echo $photo['views'] ?? 0; ?></span>
+                        <span><i class="fas fa-heart"></i> <?php echo h(t('photo_detail_likes')); ?>: <?php echo $photo['likes'] ?? 0; ?></span>
+                        <span><i class="fas fa-calendar"></i> <?php echo h(t('photo_detail_uploaded_at')); ?>:
                             <?php echo date('Y-m-d H:i', strtotime($photo['created_at'])); ?></span>
                     </div>
 
                     <!-- 图片描述 -->
                     <?php if (!empty($photo['description'])): ?>
                         <div class="photo-description">
-                            <strong>图片描述：</strong><?php echo nl2br(htmlspecialchars($photo['description'])); ?>
+                            <strong><?php echo h(t('photo_detail_description')); ?>：</strong><?php echo nl2br(htmlspecialchars($photo['description'])); ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -1169,7 +1170,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                 <div class="photo-sidebar">
                     <!-- 图片详细信息 -->
                     <div class="info-card">
-                        <h3 class="info-title"><i class="fas fa-info-circle"></i> 详细信息</h3>
+                        <h3 class="info-title"><i class="fas fa-info-circle"></i> <?php echo h(t('photo_detail_info')); ?></h3>
                         <ul class="info-list">
                             <li>
                                 <span class="info-label"><i class="fas fa-folder"></i> 航司</span>
@@ -1213,7 +1214,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                             <?php echo htmlspecialchars($photo['Cam']); ?>
                                         </a>
                                     <?php else: ?>
-                                        未填写
+                                        <?php echo h(t('photo_detail_not_filled')); ?>
                                     <?php endif; ?>
                                 </span>
                             </li>
@@ -1225,7 +1226,7 @@ $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍
                                             <?php echo htmlspecialchars($photo['Lens']); ?>
                                         </a>
                                     <?php else: ?>
-                                        未填写
+                                        <?php echo h(t('photo_detail_not_filled')); ?>
                                     <?php endif; ?>
                                 </span>
                             </li>
