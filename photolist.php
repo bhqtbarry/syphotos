@@ -272,9 +272,10 @@ $apiAccess = photo_feed_issue_access_signature($filters);
 
         .photolist-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, 220px);
             gap: 0;
             align-items: start;
+            justify-content: center;
             background: #dfeeff;
         }
 
@@ -283,7 +284,8 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             display: flex;
             align-items: center;
             justify-content: center;
-            aspect-ratio: 16 / 9;
+            width: 220px;
+            aspect-ratio: 2 / 1;
             overflow: hidden;
             background: #dfeeff;
         }
@@ -292,7 +294,8 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             width: 100%;
             height: 100%;
             display: block;
-            object-fit: contain;
+            object-fit: cover;
+            object-position: center;
             transition: transform 0.25s ease;
         }
 
@@ -358,14 +361,6 @@ $apiAccess = photo_feed_issue_access_signature($filters);
                 padding: 24px 24px 18px;
             }
 
-            .photolist-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
-
-            .photolist-card {
-                aspect-ratio: 16 / 9;
-            }
-
             .photolist-filter-wrap {
                 padding: 20px 24px 0;
                 display: block;
@@ -382,10 +377,6 @@ $apiAccess = photo_feed_issue_access_signature($filters);
         }
 
         @media (min-width: 1200px) {
-            .photolist-grid {
-                grid-template-columns: repeat(6, 1fr);
-            }
-
             .photolist-filter-grid {
                 grid-template-columns: repeat(6, minmax(0, 1fr));
             }
