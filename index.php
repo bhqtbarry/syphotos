@@ -47,7 +47,7 @@ SELECT p.*, u.username
 
 // 获取最新通过审核的图片（用于首页图片展示区）
 $display_photos = [];
-$total_display = 12; // 首页展示12张图片
+$total_display = 24; // 首页展示24张图片
 $search_keyword = '';
 $search_error = '';
 
@@ -61,14 +61,14 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
                                     INNER JOIN users u ON p.user_id = u.id 
                                     WHERE p.approved = 1 and score =4                          
                                     ORDER BY p.created_at DESC 
-                                    LIMIT 9)
+                                    LIMIT 18)
                                     union all
                                     (SELECT p.*, u.username 
                                     FROM photos p 
                                     INNER JOIN users u ON p.user_id = u.id 
                                     WHERE p.approved = 1 and score =3                        
                                     ORDER BY rand()
-                                    LIMIT 3 )");
+                                    LIMIT 6 )");
 
         $search_stmt->execute();
         $display_photos = $search_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -89,14 +89,14 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
                                     INNER JOIN users u ON p.user_id = u.id 
                                     WHERE p.approved = 1 and score =4                          
                                     ORDER BY p.created_at DESC 
-                                    LIMIT 9)
+                                    LIMIT 18)
                                     union all
                                     (SELECT p.*, u.username 
                                     FROM photos p 
                                     INNER JOIN users u ON p.user_id = u.id 
                                     WHERE p.approved = 1 and score =3                        
                                     ORDER BY rand()
-                                    LIMIT 3 )");
+                                    LIMIT 6 )");
 
         $stmt->execute();
         $display_photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -119,10 +119,11 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
     <style>
         .photolist-grid-home {
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 0;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 0 !important;
             align-items: start;
             background: #dfeeff;
+            margin-bottom: 60px;
         }
 
         .photolist-grid-home .photolist-card {
@@ -151,7 +152,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
 
         @media (min-width: 768px) {
             .photolist-grid-home {
-                grid-template-columns: repeat(6, minmax(0, 1fr));
+                grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
                 max-width: 2196px;
                 margin: 0 auto;
             }
