@@ -123,7 +123,8 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
             gap: 0 !important;
             align-items: start;
             background: #dfeeff;
-            margin-bottom: 60px;
+            width: min(100%, 2196px);
+            margin: 0 auto 60px;
         }
 
         .photolist-grid-home .photolist-card {
@@ -153,9 +154,12 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
         @media (min-width: 768px) {
             .photolist-grid-home {
                 grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-                max-width: 2196px;
-                margin: 0 auto;
             }
+        }
+
+        .home-photo-grid-wrap {
+            width: 100%;
+            padding: 0 20px;
         }
     </style>
 </head>
@@ -279,7 +283,9 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
         <h2 class="section-title fade-in">
             <i class="fas fa-clock-rotate-left" style="color: var(--primary);"></i> <?php echo h(t('index_latest_works')); ?>
         </h2>
+    </div>
 
+    <div class="home-photo-grid-wrap">
         <div class="photo-grid photolist-grid-home">
             <?php if (!empty($error)): ?>
                 <div class="error-message">
@@ -305,7 +311,9 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
                 <?php endif; ?>
             <?php endif; ?>
         </div>
+    </div>
 
+    <div class="container">
         <!-- 查看更多按钮 -->
         <div class="view-more fade-in">
             <a href="photolist.php">
