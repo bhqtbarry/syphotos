@@ -142,7 +142,7 @@ $locale = current_locale();
 
         .photolist-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0;
             align-items: start;
             background: #dfeeff;
@@ -153,7 +153,8 @@ $locale = current_locale();
             display: flex;
             align-items: center;
             justify-content: center;
-            aspect-ratio: 16 / 9;
+            width: 100%;
+            aspect-ratio: 2 / 1;
             overflow: hidden;
             background: #dfeeff;
         }
@@ -162,7 +163,8 @@ $locale = current_locale();
             width: 100%;
             height: 100%;
             display: block;
-            object-fit: contain;
+            object-fit: cover;
+            object-position: center;
             transition: transform 0.25s ease;
         }
 
@@ -234,17 +236,15 @@ $locale = current_locale();
             }
 
             .photolist-grid {
-                grid-template-columns: repeat(5, 1fr);
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+                max-width: 2196px;
+                margin: 0 auto;
             }
         }
 
         @media (min-width: 1200px) {
             .author-stats {
                 grid-template-columns: repeat(6, minmax(0, 1fr));
-            }
-
-            .photolist-grid {
-                grid-template-columns: repeat(6, 1fr);
             }
         }
     </style>
