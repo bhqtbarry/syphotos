@@ -272,10 +272,9 @@ $apiAccess = photo_feed_issue_access_signature($filters);
 
         .photolist-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, 220px);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0;
             align-items: start;
-            justify-content: center;
             background: #dfeeff;
         }
 
@@ -284,7 +283,7 @@ $apiAccess = photo_feed_issue_access_signature($filters);
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 220px;
+            width: 100%;
             aspect-ratio: 2 / 1;
             overflow: hidden;
             background: #dfeeff;
@@ -359,6 +358,12 @@ $apiAccess = photo_feed_issue_access_signature($filters);
         @media (min-width: 768px) {
             .photolist-header {
                 padding: 24px 24px 18px;
+            }
+
+            .photolist-grid {
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+                max-width: 2196px;
+                margin: 0 auto;
             }
 
             .photolist-filter-wrap {
