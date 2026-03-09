@@ -161,7 +161,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
 
         .home-photo-grid-wrap {
             width: 100%;
-            padding: 0 20px;
+            padding: 0 4px;
             box-sizing: border-box;
         }
     </style>
