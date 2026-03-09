@@ -11,8 +11,8 @@ $photo = null;
 $is_liked = false;
 $reviewer_name = t('photo_detail_unreviewed');
 // 确定用户权限状态
-$is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] ? true : false;
-$is_sys_admin = isset($_SESSION['sys_admin']) && $_SESSION['sys_admin'] ? true : false;
+$is_sys_admin = isset($_SESSION['user_id']) && !empty($_SESSION['sys_admin']);
+$is_admin = (isset($_SESSION['is_admin']) && $_SESSION['is_admin']) || $is_sys_admin;
 $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 $detail_content_column = null;
 
