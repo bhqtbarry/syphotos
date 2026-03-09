@@ -14,47 +14,62 @@ $reviewer_name = t('photo_detail_unreviewed');
 $is_sys_admin = isset($_SESSION['sys_admin']) && $_SESSION['sys_admin'];
 $is_admin = (isset($_SESSION['is_admin']) && $_SESSION['is_admin']) || $is_sys_admin;
 $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
-$detail_content_column = null;
 
-function resolve_photo_detail_content_column(PDO $pdo): ?string
-{
-    static $resolved = false;
-    static $column = null;
-
-    if ($resolved) {
-        return $column;
-    }
-
-    $resolved = true;
-
-    foreach (['details', 'description'] as $candidate) {
-        $stmt = $pdo->prepare("SHOW COLUMNS FROM photos LIKE :column_name");
-        $stmt->bindValue(':column_name', $candidate, PDO::PARAM_STR);
-        $stmt->execute();
-        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
-            $column = $candidate;
-            break;
-        }
-    }
-
-    return $column;
-}
-
-$detail_content_column = resolve_photo_detail_content_column($pdo);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_details']) && $photo_id > 0) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_photo_info']) && $photo_id > 0) {
     if (!$is_sys_admin) {
         $_SESSION['like_error'] = t('photo_detail_details_permission_denied');
-    } elseif ($detail_content_column === null) {
-        $_SESSION['like_error'] = t('photo_detail_details_column_missing');
     } else {
         try {
-            $content = str_replace("\r\n", "\n", (string) ($_POST['details_content'] ?? ''));
-            $stmt = $pdo->prepare("UPDATE photos SET `{$detail_content_column}` = :content WHERE id = :id");
-            $stmt->bindValue(':content', $content, PDO::PARAM_STR);
+            $score = trim((string) ($_POST['score'] ?? ''));
+            $focalLength = trim((string) ($_POST['FocalLength'] ?? ''));
+            $iso = trim((string) ($_POST['ISO'] ?? ''));
+            $aperture = trim((string) ($_POST['F'] ?? ''));
+
+            $stmt = $pdo->prepare("UPDATE photos SET
+                category = :category,
+                aircraft_model = :aircraft_model,
+                registration_number = :registration_number,
+                `拍摄时间` = :shooting_time,
+                `拍摄地点` = :shooting_location,
+                Cam = :camera,
+                Lens = :lens,
+                FocalLength = :focal_length,
+                ISO = :iso,
+                F = :aperture,
+                Shutter = :shutter,
+                score = :score
+                WHERE id = :id");
+            $stmt->bindValue(':category', trim((string) ($_POST['category'] ?? '')), PDO::PARAM_STR);
+            $stmt->bindValue(':aircraft_model', trim((string) ($_POST['aircraft_model'] ?? '')), PDO::PARAM_STR);
+            $stmt->bindValue(':registration_number', trim((string) ($_POST['registration_number'] ?? '')), PDO::PARAM_STR);
+            $stmt->bindValue(':shooting_time', trim((string) ($_POST['shooting_time'] ?? '')), PDO::PARAM_STR);
+            $stmt->bindValue(':shooting_location', strtoupper(trim((string) ($_POST['shooting_location'] ?? ''))), PDO::PARAM_STR);
+            $stmt->bindValue(':camera', trim((string) ($_POST['Cam'] ?? '')), PDO::PARAM_STR);
+            $stmt->bindValue(':lens', trim((string) ($_POST['Lens'] ?? '')), PDO::PARAM_STR);
+            if ($focalLength === '') {
+                $stmt->bindValue(':focal_length', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':focal_length', (int) $focalLength, PDO::PARAM_INT);
+            }
+            if ($iso === '') {
+                $stmt->bindValue(':iso', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':iso', (int) $iso, PDO::PARAM_INT);
+            }
+            if ($aperture === '') {
+                $stmt->bindValue(':aperture', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':aperture', (float) $aperture);
+            }
+            $stmt->bindValue(':shutter', trim((string) ($_POST['Shutter'] ?? '')), PDO::PARAM_STR);
+            if ($score === '') {
+                $stmt->bindValue(':score', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':score', (int) $score, PDO::PARAM_INT);
+            }
             $stmt->bindValue(':id', $photo_id, PDO::PARAM_INT);
             $stmt->execute();
-            $_SESSION['like_success'] = t('photo_detail_details_saved');
+            $_SESSION['like_success'] = t('photo_detail_info_saved');
         } catch (PDOException $e) {
             $_SESSION['like_error'] = t('photo_detail_action_failed_prefix') . $e->getMessage();
         }
@@ -217,8 +232,6 @@ $camFilterUrl = 'photolist.php?cam=' . urlencode((string) ($photo['Cam'] ?? ''))
 $lensFilterUrl = 'photolist.php?lens=' . urlencode((string) ($photo['Lens'] ?? ''));
 $registrationFilterUrl = 'photolist.php?registration_number=' . urlencode((string) ($photo['registration_number'] ?? ''));
 $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍摄地点'] ?? ''));
-$detailContent = $detail_content_column !== null ? (string) ($photo[$detail_content_column] ?? '') : '';
-$detailContentLabel = $detail_content_column === 'details' ? t('photo_detail_details_content') : t('photo_detail_description');
 
 function fetch_photo_detail_related_items(PDO $pdo, string $field, string|int $value, int $photoId): array
 {
@@ -524,50 +537,30 @@ $relatedColumns = [
             text-align: center;
         }
 
-        .photo-description {
-            padding: 8px 0 0;
-            color: var(--text-dark);
-            line-height: 1.6;
-            font-size: 0.98rem;
-            border-left: 3px solid var(--primary-light);
-            padding-left: 15px;
-            margin-top: 8px;
+        .info-edit-form {
+            display: contents;
         }
 
-        .details-edit-form {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px dashed #e6edff;
-        }
-
-        .details-edit-label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text-dark);
-            font-weight: 600;
-        }
-
-        .details-edit-textarea {
+        .info-edit-input {
             width: 100%;
-            min-height: 160px;
             border: 1px solid #c9d8ff;
-            border-radius: 10px;
-            padding: 12px 14px;
+            border-radius: 8px;
+            padding: 8px 10px;
             font: inherit;
-            line-height: 1.6;
+            line-height: 1.4;
             color: var(--text-dark);
-            resize: vertical;
             box-sizing: border-box;
+            background-color: #fff;
         }
 
-        .details-edit-textarea:focus {
+        .info-edit-input:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.12);
         }
 
-        .details-edit-actions {
-            margin-top: 10px;
+        .info-edit-actions {
+            padding: 12px 0 4px;
             display: flex;
             justify-content: flex-end;
         }
@@ -594,12 +587,6 @@ $relatedColumns = [
             opacity: 0.55;
             transform: none;
             box-shadow: none;
-        }
-
-        .details-edit-note {
-            margin-top: 8px;
-            color: var(--text-medium);
-            font-size: 0.9rem;
         }
 
         .photo-content {
@@ -1420,30 +1407,6 @@ $relatedColumns = [
                         <span><i class="fas fa-calendar"></i> <?php echo h(t('photo_detail_uploaded_at')); ?>:
                             <?php echo date('Y-m-d H:i', strtotime($photo['created_at'])); ?></span>
                     </div>
-
-                    <!-- 图片描述 -->
-                    <?php if (!$is_sys_admin && $detailContent !== ''): ?>
-                        <div class="photo-description">
-                            <strong><?php echo h($detailContentLabel); ?>:</strong><?php echo nl2br(htmlspecialchars($detailContent)); ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($is_sys_admin): ?>
-                        <form method="post" class="details-edit-form">
-                            <label class="details-edit-label" for="details_content">
-                                <?php echo h($detailContentLabel); ?>
-                            </label>
-                            <textarea id="details_content" name="details_content" class="details-edit-textarea"><?php echo h($detailContent); ?></textarea>
-                            <?php if ($detail_content_column === null): ?>
-                                <div class="details-edit-note"><?php echo h(t('photo_detail_details_column_missing')); ?></div>
-                            <?php endif; ?>
-                            <div class="details-edit-actions">
-                                <button type="submit" name="save_details" class="details-save-btn" <?php echo $detail_content_column === null ? 'disabled' : ''; ?>>
-                                    <i class="fas fa-save"></i> <?php echo h(t('photo_detail_save_details')); ?>
-                                </button>
-                            </div>
-                        </form>
-                    <?php endif; ?>
                 </div>
                     <div class="action-buttons">
                         <form method="post">
@@ -1528,127 +1491,189 @@ $relatedColumns = [
                     <!-- 图片详细信息 -->
                     <div class="info-card">
                         <h3 class="info-title"><i class="fas fa-info-circle"></i> <?php echo h(t('photo_detail_info')); ?></h3>
-                        <ul class="info-list">
-                            <li>
-                                <span class="info-label"><i class="fas fa-folder"></i> <?php echo h(t('photo_detail_airline')); ?></span>
-                                <span class="info-value">
-                                    <a href="<?php echo htmlspecialchars($airlineFilterUrl); ?>">
-                                        <?php echo htmlspecialchars($photo['category']); ?>
-                                    </a>
-                                </span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-plane"></i> <?php echo h(t('photo_detail_model')); ?></span>
-                                <span class="info-value">
-                                    <a href="<?php echo htmlspecialchars($aircraftFilterUrl); ?>">
-                                        <?php echo htmlspecialchars($photo['aircraft_model']); ?>
-                                    </a>
-                                </span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_registration')); ?></span>
-                                <span class="info-value">
-                                    <a href="<?php echo htmlspecialchars($registrationFilterUrl); ?>">
-                                        <?php echo htmlspecialchars($photo['registration_number']); ?>
-                                    </a>
-                                </span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-clock"></i> <?php echo h(t('photo_detail_shot_time')); ?></span>
-                                <span class="info-value"><?php echo htmlspecialchars($photo['拍摄时间']); ?></span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-map-marker-alt"></i> <?php echo h(t('photo_detail_location')); ?></span>
-                                <span class="info-value">
-                                    <a href="<?php echo htmlspecialchars($locationFilterUrl); ?>">
-                                        <?php echo htmlspecialchars($photo['拍摄地点']); ?>
-                                    </a>
-                                </span>
-                            </li>
-
-                            <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_camera')); ?></span>
-                                <span class="info-value">
-                                    <?php if (!empty($photo['Cam'])): ?>
-                                        <a href="<?php echo htmlspecialchars($camFilterUrl); ?>">
-                                            <?php echo htmlspecialchars($photo['Cam']); ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <?php echo h(t('photo_detail_not_filled')); ?>
-                                    <?php endif; ?>
-                                </span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_lens')); ?></span>
-                                <span class="info-value">
-                                    <?php if (!empty($photo['Lens'])): ?>
-                                        <a href="<?php echo htmlspecialchars($lensFilterUrl); ?>">
-                                            <?php echo htmlspecialchars($photo['Lens']); ?>
-                                        </a>
-                                    <?php else: ?>
-                                        <?php echo h(t('photo_detail_not_filled')); ?>
-                                    <?php endif; ?>
-                                </span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_focal_length')); ?></span>
-                                <span class="info-value"><?php echo htmlspecialchars($photo['FocalLength']); ?>
-                                    mm</span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> ISO</span>
-                                <span class="info-value"><?php echo htmlspecialchars($photo['ISO']); ?></span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_aperture')); ?></span>
-                                <span class="info-value">f/<?php echo htmlspecialchars($photo['F']); ?></span>
-                            </li>
-                            <li>
-                                <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_shutter')); ?></span>
-                                <span class="info-value"><?php echo htmlspecialchars($photo['Shutter']); ?></span>
-                            </li>
-
-
-
-
-                            <li>
-                                <span class="info-label">
-                                    <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_location_fr24')); ?>
-                                </span>
-                                <span class="info-value">
-                                    <a href="https://www.flightradar24.com/data/airports/<?php echo urlencode($photo['拍摄地点']); ?>"
-                                        target="_blank" rel="noopener noreferrer">
-                                        <?php echo htmlspecialchars($photo['拍摄地点']); ?>
-                                    </a>
-                                </span>
-                            </li>
-
-                            <li>
-                                <span class="info-label">
-                                    <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_recent_fr24')); ?>
-                                </span>
-                                <span class="info-value">
-                                    <a href="https://www.flightradar24.com/data/aircraft/<?php echo urlencode($photo['registration_number']); ?>"
-                                        target="_blank" rel="noopener noreferrer">
-                                        <?php echo htmlspecialchars($photo['registration_number']); ?>
-                                    </a>
-                                </span>
-                            </li>
-                            <li>
-                                <span class="info-label">
-                                    <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_jetphotos')); ?>
-                                </span>
-                                <span class="info-value">
-                                    <a href="https://www.jetphotos.com/registration/<?php echo urlencode($photo['registration_number']); ?>"
-                                        target="_blank" rel="noopener noreferrer">
-                                        <?php echo htmlspecialchars($photo['registration_number']); ?>
-                                    </a>
-                                </span>
-                            </li>
-
-
-
-                        </ul>
+                        <?php if ($is_sys_admin): ?>
+                            <form method="post" class="info-edit-form">
+                        <?php endif; ?>
+                            <ul class="info-list">
+                                <li>
+                                    <span class="info-label"><i class="fas fa-folder"></i> <?php echo h(t('photo_detail_airline')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="category" class="info-edit-input" value="<?php echo h((string) ($photo['category'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <a href="<?php echo htmlspecialchars($airlineFilterUrl); ?>">
+                                                <?php echo htmlspecialchars($photo['category']); ?>
+                                            </a>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-plane"></i> <?php echo h(t('photo_detail_model')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="aircraft_model" class="info-edit-input" value="<?php echo h((string) ($photo['aircraft_model'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <a href="<?php echo htmlspecialchars($aircraftFilterUrl); ?>">
+                                                <?php echo htmlspecialchars($photo['aircraft_model']); ?>
+                                            </a>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_registration')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="registration_number" class="info-edit-input" value="<?php echo h((string) ($photo['registration_number'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <a href="<?php echo htmlspecialchars($registrationFilterUrl); ?>">
+                                                <?php echo htmlspecialchars($photo['registration_number']); ?>
+                                            </a>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-clock"></i> <?php echo h(t('photo_detail_shot_time')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="shooting_time" class="info-edit-input" value="<?php echo h((string) ($photo['拍摄时间'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($photo['拍摄时间']); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-map-marker-alt"></i> <?php echo h(t('photo_detail_location')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="shooting_location" class="info-edit-input" value="<?php echo h((string) ($photo['拍摄地点'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <a href="<?php echo htmlspecialchars($locationFilterUrl); ?>">
+                                                <?php echo htmlspecialchars($photo['拍摄地点']); ?>
+                                            </a>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_camera')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="Cam" class="info-edit-input" value="<?php echo h((string) ($photo['Cam'] ?? '')); ?>">
+                                        <?php elseif (!empty($photo['Cam'])): ?>
+                                            <a href="<?php echo htmlspecialchars($camFilterUrl); ?>">
+                                                <?php echo htmlspecialchars($photo['Cam']); ?>
+                                            </a>
+                                        <?php else: ?>
+                                            <?php echo h(t('photo_detail_not_filled')); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_lens')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="Lens" class="info-edit-input" value="<?php echo h((string) ($photo['Lens'] ?? '')); ?>">
+                                        <?php elseif (!empty($photo['Lens'])): ?>
+                                            <a href="<?php echo htmlspecialchars($lensFilterUrl); ?>">
+                                                <?php echo htmlspecialchars($photo['Lens']); ?>
+                                            </a>
+                                        <?php else: ?>
+                                            <?php echo h(t('photo_detail_not_filled')); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_focal_length')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="number" name="FocalLength" class="info-edit-input" value="<?php echo h((string) ($photo['FocalLength'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($photo['FocalLength']); ?> mm
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-camera"></i> ISO</span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="number" name="ISO" class="info-edit-input" value="<?php echo h((string) ($photo['ISO'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($photo['ISO']); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_aperture')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="number" step="0.1" name="F" class="info-edit-input" value="<?php echo h((string) ($photo['F'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            f/<?php echo htmlspecialchars($photo['F']); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <li>
+                                    <span class="info-label"><i class="fas fa-camera"></i> <?php echo h(t('photo_detail_shutter')); ?></span>
+                                    <span class="info-value">
+                                        <?php if ($is_sys_admin): ?>
+                                            <input type="text" name="Shutter" class="info-edit-input" value="<?php echo h((string) ($photo['Shutter'] ?? '')); ?>">
+                                        <?php else: ?>
+                                            <?php echo htmlspecialchars($photo['Shutter']); ?>
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                                <?php if ($is_sys_admin): ?>
+                                    <li>
+                                        <span class="info-label"><i class="fas fa-star"></i> <?php echo h(t('photo_detail_score')); ?></span>
+                                        <span class="info-value">
+                                            <input type="number" name="score" class="info-edit-input" value="<?php echo h((string) ($photo['score'] ?? '')); ?>">
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <div class="info-edit-actions" style="width:100%;">
+                                            <button type="submit" name="save_photo_info" class="details-save-btn">
+                                                <i class="fas fa-save"></i> <?php echo h(t('photo_detail_save_info')); ?>
+                                            </button>
+                                        </div>
+                                    </li>
+                                <?php else: ?>
+                                    <li>
+                                        <span class="info-label">
+                                            <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_location_fr24')); ?>
+                                        </span>
+                                        <span class="info-value">
+                                            <a href="https://www.flightradar24.com/data/airports/<?php echo urlencode($photo['拍摄地点']); ?>"
+                                                target="_blank" rel="noopener noreferrer">
+                                                <?php echo htmlspecialchars($photo['拍摄地点']); ?>
+                                            </a>
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <span class="info-label">
+                                            <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_recent_fr24')); ?>
+                                        </span>
+                                        <span class="info-value">
+                                            <a href="https://www.flightradar24.com/data/aircraft/<?php echo urlencode($photo['registration_number']); ?>"
+                                                target="_blank" rel="noopener noreferrer">
+                                                <?php echo htmlspecialchars($photo['registration_number']); ?>
+                                            </a>
+                                        </span>
+                                    </li>
+                                    <li>
+                                        <span class="info-label">
+                                            <i class="fas fa-hashtag"></i> <?php echo h(t('photo_detail_jetphotos')); ?>
+                                        </span>
+                                        <span class="info-value">
+                                            <a href="https://www.jetphotos.com/registration/<?php echo urlencode($photo['registration_number']); ?>"
+                                                target="_blank" rel="noopener noreferrer">
+                                                <?php echo htmlspecialchars($photo['registration_number']); ?>
+                                            </a>
+                                        </span>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
+                        <?php if ($is_sys_admin): ?>
+                            </form>
+                        <?php endif; ?>
                     </div>
 
 
