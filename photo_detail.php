@@ -12,7 +12,57 @@ $is_liked = false;
 $reviewer_name = t('photo_detail_unreviewed');
 // 确定用户权限状态
 $is_admin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] ? true : false;
+$is_sys_admin = isset($_SESSION['sys_admin']) && $_SESSION['sys_admin'] ? true : false;
 $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
+$detail_content_column = null;
+
+function resolve_photo_detail_content_column(PDO $pdo): ?string
+{
+    static $resolved = false;
+    static $column = null;
+
+    if ($resolved) {
+        return $column;
+    }
+
+    $resolved = true;
+
+    foreach (['details', 'description'] as $candidate) {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM photos LIKE :column_name");
+        $stmt->bindValue(':column_name', $candidate, PDO::PARAM_STR);
+        $stmt->execute();
+        if ($stmt->fetch(PDO::FETCH_ASSOC)) {
+            $column = $candidate;
+            break;
+        }
+    }
+
+    return $column;
+}
+
+$detail_content_column = resolve_photo_detail_content_column($pdo);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_details']) && $photo_id > 0) {
+    if (!$is_sys_admin) {
+        $_SESSION['like_error'] = t('photo_detail_details_permission_denied');
+    } elseif ($detail_content_column === null) {
+        $_SESSION['like_error'] = t('photo_detail_details_column_missing');
+    } else {
+        try {
+            $content = str_replace("\r\n", "\n", (string) ($_POST['details_content'] ?? ''));
+            $stmt = $pdo->prepare("UPDATE photos SET `{$detail_content_column}` = :content WHERE id = :id");
+            $stmt->bindValue(':content', $content, PDO::PARAM_STR);
+            $stmt->bindValue(':id', $photo_id, PDO::PARAM_INT);
+            $stmt->execute();
+            $_SESSION['like_success'] = t('photo_detail_details_saved');
+        } catch (PDOException $e) {
+            $_SESSION['like_error'] = t('photo_detail_action_failed_prefix') . $e->getMessage();
+        }
+    }
+
+    header("Location: photo_detail.php?id=" . $photo_id);
+    exit;
+}
 
 // 处理点赞请求
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['like']) && $photo_id > 0) {
@@ -167,6 +217,8 @@ $camFilterUrl = 'photolist.php?cam=' . urlencode((string) ($photo['Cam'] ?? ''))
 $lensFilterUrl = 'photolist.php?lens=' . urlencode((string) ($photo['Lens'] ?? ''));
 $registrationFilterUrl = 'photolist.php?registration_number=' . urlencode((string) ($photo['registration_number'] ?? ''));
 $locationFilterUrl = 'photolist.php?iatacode=' . urlencode((string) ($photo['拍摄地点'] ?? ''));
+$detailContent = $detail_content_column !== null ? (string) ($photo[$detail_content_column] ?? '') : '';
+$detailContentLabel = $detail_content_column === 'details' ? t('photo_detail_details_content') : t('photo_detail_description');
 
 function fetch_photo_detail_related_items(PDO $pdo, string $field, string|int $value, int $photoId): array
 {
@@ -480,6 +532,61 @@ $relatedColumns = [
             border-left: 3px solid var(--primary-light);
             padding-left: 15px;
             margin-top: 8px;
+        }
+
+        .details-edit-form {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px dashed #e6edff;
+        }
+
+        .details-edit-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .details-edit-textarea {
+            width: 100%;
+            min-height: 160px;
+            border: 1px solid #c9d8ff;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font: inherit;
+            line-height: 1.6;
+            color: var(--text-dark);
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .details-edit-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.12);
+        }
+
+        .details-edit-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .details-save-btn {
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .details-save-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(22, 93, 255, 0.16);
         }
 
         .photo-content {
@@ -1302,10 +1409,24 @@ $relatedColumns = [
                     </div>
 
                     <!-- 图片描述 -->
-                    <?php if (!empty($photo['description'])): ?>
+                    <?php if (!$is_sys_admin && $detailContent !== ''): ?>
                         <div class="photo-description">
-                            <strong><?php echo h(t('photo_detail_description')); ?>:</strong><?php echo nl2br(htmlspecialchars($photo['description'])); ?>
+                            <strong><?php echo h($detailContentLabel); ?>:</strong><?php echo nl2br(htmlspecialchars($detailContent)); ?>
                         </div>
+                    <?php endif; ?>
+
+                    <?php if ($is_sys_admin && $detail_content_column !== null): ?>
+                        <form method="post" class="details-edit-form">
+                            <label class="details-edit-label" for="details_content">
+                                <?php echo h($detailContentLabel); ?>
+                            </label>
+                            <textarea id="details_content" name="details_content" class="details-edit-textarea"><?php echo h($detailContent); ?></textarea>
+                            <div class="details-edit-actions">
+                                <button type="submit" name="save_details" class="details-save-btn">
+                                    <i class="fas fa-save"></i> <?php echo h(t('photo_detail_save_details')); ?>
+                                </button>
+                            </div>
+                        </form>
                     <?php endif; ?>
                 </div>
                     <div class="action-buttons">
