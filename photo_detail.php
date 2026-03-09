@@ -330,6 +330,7 @@ $editableInfoRows = [
         'display_html' => $photo['score'] !== null && $photo['score'] !== '' ? htmlspecialchars((string) $photo['score']) : h(t('photo_detail_not_filled')),
         'input_type' => 'select',
         'options' => ['' => '-', '1' => '1', '2' => '2', '3' => '3', '4' => '4', '5' => '5'],
+        'visible' => $is_admin,
     ],
 ];
 
@@ -1672,6 +1673,9 @@ $relatedColumns = [
                         <h3 class="info-title"><i class="fas fa-info-circle"></i> <?php echo h(t('photo_detail_info')); ?></h3>
                         <ul class="info-list">
                             <?php foreach ($editableInfoRows as $row): ?>
+                                <?php if (array_key_exists('visible', $row) && !$row['visible']) {
+                                    continue;
+                                } ?>
                                 <li class="info-item<?php echo $is_sys_admin ? ' is-editable' : ''; ?>" data-field-row="<?php echo h($row['key']); ?>">
                                     <span class="info-label"><i class="<?php echo h($row['icon']); ?>"></i> <?php echo h($row['label']); ?></span>
                                     <div class="info-value-wrap">
