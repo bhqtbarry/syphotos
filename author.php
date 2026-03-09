@@ -143,9 +143,13 @@ $locale = current_locale();
         .photolist-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 0;
+            gap: 2px;
             align-items: start;
             background: #dfeeff;
+            width: min(calc(100% - 8px), 2196px);
+            margin: 0 auto;
+            padding: 4px;
+            box-sizing: border-box;
         }
 
         .photolist-card {
@@ -237,8 +241,6 @@ $locale = current_locale();
 
             .photolist-grid {
                 grid-template-columns: repeat(6, minmax(0, 1fr));
-                max-width: 2196px;
-                margin: 0 auto;
             }
         }
 
