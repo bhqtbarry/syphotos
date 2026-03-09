@@ -11,7 +11,7 @@ $photo = null;
 $is_liked = false;
 $reviewer_name = t('photo_detail_unreviewed');
 // 确定用户权限状态
-$is_sys_admin = isset($_SESSION['user_id']) && !empty($_SESSION['sys_admin']);
+$is_sys_admin = isset($_SESSION['sys_admin']) && $_SESSION['sys_admin'];
 $is_admin = (isset($_SESSION['is_admin']) && $_SESSION['is_admin']) || $is_sys_admin;
 $current_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 $detail_content_column = null;
@@ -587,6 +587,19 @@ $relatedColumns = [
         .details-save-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 10px 20px rgba(22, 93, 255, 0.16);
+        }
+
+        .details-save-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .details-edit-note {
+            margin-top: 8px;
+            color: var(--text-medium);
+            font-size: 0.9rem;
         }
 
         .photo-content {
@@ -1415,14 +1428,17 @@ $relatedColumns = [
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($is_sys_admin && $detail_content_column !== null): ?>
+                    <?php if ($is_sys_admin): ?>
                         <form method="post" class="details-edit-form">
                             <label class="details-edit-label" for="details_content">
                                 <?php echo h($detailContentLabel); ?>
                             </label>
                             <textarea id="details_content" name="details_content" class="details-edit-textarea"><?php echo h($detailContent); ?></textarea>
+                            <?php if ($detail_content_column === null): ?>
+                                <div class="details-edit-note"><?php echo h(t('photo_detail_details_column_missing')); ?></div>
+                            <?php endif; ?>
                             <div class="details-edit-actions">
-                                <button type="submit" name="save_details" class="details-save-btn">
+                                <button type="submit" name="save_details" class="details-save-btn" <?php echo $detail_content_column === null ? 'disabled' : ''; ?>>
                                     <i class="fas fa-save"></i> <?php echo h(t('photo_detail_save_details')); ?>
                                 </button>
                             </div>
