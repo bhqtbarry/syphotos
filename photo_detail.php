@@ -673,6 +673,21 @@ $relatedColumns = [
             box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.12);
         }
 
+        .info-value-wrap {
+            flex: 1;
+            min-width: 0;
+            padding-left: 10px;
+        }
+
+        .info-value-wrap .info-value {
+            padding-left: 0;
+            display: block;
+        }
+
+        .info-value-wrap .info-value::before {
+            left: -10px;
+        }
+
         .info-item.is-editable .info-value-wrap {
             display: flex;
             align-items: flex-start;
