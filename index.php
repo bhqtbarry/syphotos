@@ -120,11 +120,13 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
         .photolist-grid-home {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-            gap: 0 !important;
+            gap: 2px !important;
             align-items: start;
             background: #dfeeff;
             width: min(100%, 2196px);
             margin: 0 auto 60px;
+            padding: 4px;
+            box-sizing: border-box;
         }
 
         .photolist-grid-home .photolist-card {
@@ -160,6 +162,7 @@ if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
         .home-photo-grid-wrap {
             width: 100%;
             padding: 0 20px;
+            box-sizing: border-box;
         }
     </style>
 </head>
