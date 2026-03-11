@@ -232,15 +232,25 @@ order by count(*) desc;
                                 </thead>
                                 <tbody>
                                     <?php foreach ($adminScoreSummary as $row): ?>
+                                        <?php
+                                            $adminName = isset($row['adminname']) ? trim((string)$row['adminname']) : '';
+                                            $score0 = isset($row['0']) ? (int)$row['0'] : 0;
+                                            $score1 = isset($row['1']) ? (int)$row['1'] : 0;
+                                            $score2 = isset($row['2']) ? (int)$row['2'] : 0;
+                                            $score3 = isset($row['3']) ? (int)$row['3'] : 0;
+                                            $score4 = isset($row['4']) ? (int)$row['4'] : 0;
+                                            $score5 = isset($row['5']) ? (int)$row['5'] : 0;
+                                            $total = isset($row['total']) ? (int)$row['total'] : 0;
+                                        ?>
                                         <tr>
-                                            <td><?php echo ( $row['adminname']); ?></td>
-                                            <td><?php echo number_format((int)($row['0'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['1'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['2'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['3'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['4'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['5'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['total'] ?? 0)); ?></td>
+                                            <td><?php echo htmlspecialchars($adminName, ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo number_format($score0); ?></td>
+                                            <td><?php echo number_format($score1); ?></td>
+                                            <td><?php echo number_format($score2); ?></td>
+                                            <td><?php echo number_format($score3); ?></td>
+                                            <td><?php echo number_format($score4); ?></td>
+                                            <td><?php echo number_format($score5); ?></td>
+                                            <td><?php echo number_format($total); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -253,10 +263,5 @@ order by count(*) desc;
     </main>
 
     <?php include __DIR__ . '/src/footer.php'; ?>
-    <?php if ($isAdmin): ?>
-    <script>
-        console.log('adminScoreSummary', <?php echo json_encode($adminScoreSummary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>);
-    </script>
-    <?php endif; ?>
 </body>
 </html>
