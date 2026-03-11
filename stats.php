@@ -7,6 +7,32 @@ session_start();
 
 $onlineAdminNames = getOnlineAdminNames();
 $locale = current_locale();
+
+$isAdmin = isset($_SESSION['user_id']) && !empty($_SESSION['is_admin']);
+$adminScoreSummary = [];
+$adminScoreSummaryError = null;
+if ($isAdmin) {
+    $sql = "
+        SELECT
+            adminname,
+            SUM(CASE WHEN score = 0 THEN 1 ELSE 0 END) AS score_0,
+            SUM(CASE WHEN score = 1 THEN 1 ELSE 0 END) AS score_1,
+            SUM(CASE WHEN score = 2 THEN 1 ELSE 0 END) AS score_2,
+            SUM(CASE WHEN score = 3 THEN 1 ELSE 0 END) AS score_3,
+            SUM(CASE WHEN score = 4 THEN 1 ELSE 0 END) AS score_4,
+            SUM(CASE WHEN score = 5 THEN 1 ELSE 0 END) AS score_5
+        FROM v_all
+        GROUP BY adminname
+    ";
+
+    try {
+        $stmt = $pdo->query($sql);
+        $adminScoreSummary = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        $adminScoreSummaryError = 'Failed to load admin score summary.';
+        $adminScoreSummary = [];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'); ?>">
@@ -79,6 +105,75 @@ $locale = current_locale();
                 padding: 24px 24px 0;
             }
         }
+
+        .admin-score-section {
+            padding: 18px 16px 28px;
+        }
+
+        .admin-score-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 18px 16px;
+            box-shadow: 0 10px 28px rgba(22, 93, 255, 0.08);
+        }
+
+        .admin-score-title {
+            margin: 0 0 14px;
+            font-size: 1.1rem;
+            color: #1d2129;
+        }
+
+        .admin-score-note {
+            margin: 8px 0 0;
+            color: #4e5969;
+            font-size: 0.9rem;
+        }
+
+        .admin-score-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .admin-score-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 720px;
+        }
+
+        .admin-score-table th,
+        .admin-score-table td {
+            padding: 10px 10px;
+            text-align: center;
+            border-bottom: 1px solid #e5e9f2;
+            white-space: nowrap;
+        }
+
+        .admin-score-table th {
+            font-size: 0.85rem;
+            color: #4e5969;
+            font-weight: 700;
+            background: #f7faff;
+        }
+
+        .admin-score-table td {
+            font-size: 0.95rem;
+            color: #1d2129;
+        }
+
+        .admin-score-table td:first-child,
+        .admin-score-table th:first-child {
+            text-align: left;
+        }
+
+        @media (min-width: 768px) {
+            .admin-score-section {
+                padding: 24px 24px 36px;
+            }
+
+            .admin-score-card {
+                padding: 20px 18px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -109,6 +204,48 @@ $locale = current_locale();
                 <div class="stats-extra"><?php echo !empty($onlineAdminNames) ? htmlspecialchars(implode('、', $onlineAdminNames)) : h(t('stats_no_online_admins')); ?></div>
             </div>
         </section>
+
+        <?php if ($isAdmin): ?>
+            <section class="admin-score-section">
+                <div class="admin-score-card">
+                    <h2 class="admin-score-title">Admin Score Summary</h2>
+                    <?php if (!empty($adminScoreSummaryError)): ?>
+                        <div class="admin-score-note"><?php echo h($adminScoreSummaryError); ?></div>
+                    <?php elseif (empty($adminScoreSummary)): ?>
+                        <div class="admin-score-note">No data.</div>
+                    <?php else: ?>
+                        <div class="admin-score-table-wrap">
+                            <table class="admin-score-table">
+                                <thead>
+                                    <tr>
+                                        <th>Admin</th>
+                                        <th>Score 0</th>
+                                        <th>Score 1</th>
+                                        <th>Score 2</th>
+                                        <th>Score 3</th>
+                                        <th>Score 4</th>
+                                        <th>Score 5</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($adminScoreSummary as $row): ?>
+                                        <tr>
+                                            <td><?php echo h($row['adminname'] ?? ''); ?></td>
+                                            <td><?php echo number_format((int)($row['score_0'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['score_1'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['score_2'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['score_3'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['score_4'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['score_5'] ?? 0)); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </section>
+        <?php endif; ?>
     </main>
 
     <?php include __DIR__ . '/src/footer.php'; ?>
