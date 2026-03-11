@@ -14,7 +14,7 @@ $adminScoreSummaryError = null;
 if ($isAdmin) {
     $sql = "
 SELECT
-    adminname,
+    adminName,
     SUM(CASE WHEN score = 0 THEN 1 ELSE 0 END) AS `0`,
     SUM(CASE WHEN score = 1 THEN 1 ELSE 0 END) AS `1`,
     SUM(CASE WHEN score = 2 THEN 1 ELSE 0 END) AS `2`,
@@ -23,7 +23,7 @@ SELECT
     SUM(CASE WHEN score = 5 THEN 1 ELSE 0 END) AS `5`,
     count(*) as total
 FROM v_all
-GROUP BY adminname
+GROUP BY adminName
 order by count(*) desc;
     ";
 
@@ -233,7 +233,7 @@ order by count(*) desc;
                                 <tbody>
                                     <?php foreach ($adminScoreSummary as $row): ?>
                                         <?php
-                                            $adminName = isset($row['adminname']) ? trim((string)$row['adminname']) : '';
+                                            $adminName = isset($row['adminName']) ? trim((string)$row['adminName']) : '';
                                             $score0 = isset($row['0']) ? (int)$row['0'] : 0;
                                             $score1 = isset($row['1']) ? (int)$row['1'] : 0;
                                             $score2 = isset($row['2']) ? (int)$row['2'] : 0;
