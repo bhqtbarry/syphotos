@@ -233,7 +233,7 @@ order by count(*) desc;
                                 <tbody>
                                     <?php foreach ($adminScoreSummary as $row): ?>
                                         <tr>
-                                            <td><?php echo h((string)($row['adminname'] ?? '')); ?></td>
+                                            <td><?php echo ( $row['adminname']); ?></td>
                                             <td><?php echo number_format((int)($row['0'] ?? 0)); ?></td>
                                             <td><?php echo number_format((int)($row['1'] ?? 0)); ?></td>
                                             <td><?php echo number_format((int)($row['2'] ?? 0)); ?></td>
