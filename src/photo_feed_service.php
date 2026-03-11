@@ -135,7 +135,7 @@ function photo_feed_fetch_page(PDO $pdo, array $filters): array
     $sql = "SELECT p.*, u.username
             FROM photos p
             INNER JOIN users u ON p.user_id = u.id" . $where . "
-            ORDER BY p.score DESC, p.`拍摄时间` DESC, p.created_at DESC
+            ORDER BY p.score DESC, p.`created_at` DESC
             LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($sql);
