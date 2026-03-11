@@ -221,12 +221,13 @@ order by count(*) desc;
                                 <thead>
                                     <tr>
                                         <th>Admin</th>
-                                        <th>Score 0</th>
-                                        <th>Score 1</th>
-                                        <th>Score 2</th>
-                                        <th>Score 3</th>
-                                        <th>Score 4</th>
-                                        <th>Score 5</th>
+                                        <th>0</th>
+                                        <th>1</th>
+                                        <th>2</th>
+                                        <th>3</th>
+                                        <th>4</th>
+                                        <th>5</th>
+                                        <th>Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
