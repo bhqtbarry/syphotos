@@ -253,5 +253,10 @@ order by count(*) desc;
     </main>
 
     <?php include __DIR__ . '/src/footer.php'; ?>
+    <?php if ($isAdmin): ?>
+    <script>
+        console.log('adminScoreSummary', <?php echo json_encode($adminScoreSummary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>);
+    </script>
+    <?php endif; ?>
 </body>
 </html>
