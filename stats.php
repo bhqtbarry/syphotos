@@ -234,12 +234,12 @@ order by count(*) desc;
                                     <?php foreach ($adminScoreSummary as $row): ?>
                                         <tr>
                                             <td><?php echo h($row['adminname'] ?? ''); ?></td>
-                                            <td><?php echo number_format((int)($row['score_0'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['score_1'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['score_2'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['score_3'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['score_4'] ?? 0)); ?></td>
-                                            <td><?php echo number_format((int)($row['score_5'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['0'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['1'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['2'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['3'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['4'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['5'] ?? 0)); ?></td>
                                             <td><?php echo number_format((int)($row['total'] ?? 0)); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
