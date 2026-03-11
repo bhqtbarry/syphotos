@@ -13,16 +13,18 @@ $adminScoreSummary = [];
 $adminScoreSummaryError = null;
 if ($isAdmin) {
     $sql = "
-        SELECT
-            adminname,
-            SUM(CASE WHEN score = 0 THEN 1 ELSE 0 END) AS score_0,
-            SUM(CASE WHEN score = 1 THEN 1 ELSE 0 END) AS score_1,
-            SUM(CASE WHEN score = 2 THEN 1 ELSE 0 END) AS score_2,
-            SUM(CASE WHEN score = 3 THEN 1 ELSE 0 END) AS score_3,
-            SUM(CASE WHEN score = 4 THEN 1 ELSE 0 END) AS score_4,
-            SUM(CASE WHEN score = 5 THEN 1 ELSE 0 END) AS score_5
-        FROM v_all
-        GROUP BY adminname
+SELECT
+    adminname,
+    SUM(CASE WHEN score = 0 THEN 1 ELSE 0 END) AS `0`,
+    SUM(CASE WHEN score = 1 THEN 1 ELSE 0 END) AS `1`,
+    SUM(CASE WHEN score = 2 THEN 1 ELSE 0 END) AS `2`,
+    SUM(CASE WHEN score = 3 THEN 1 ELSE 0 END) AS `3`,
+    SUM(CASE WHEN score = 4 THEN 1 ELSE 0 END) AS `4`,
+    SUM(CASE WHEN score = 5 THEN 1 ELSE 0 END) AS `5`,
+    count(*) as total
+FROM v_all
+GROUP BY adminname
+order by count(*) desc;
     ";
 
     try {
@@ -237,6 +239,7 @@ if ($isAdmin) {
                                             <td><?php echo number_format((int)($row['score_3'] ?? 0)); ?></td>
                                             <td><?php echo number_format((int)($row['score_4'] ?? 0)); ?></td>
                                             <td><?php echo number_format((int)($row['score_5'] ?? 0)); ?></td>
+                                            <td><?php echo number_format((int)($row['total'] ?? 0)); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
