@@ -1,5 +1,6 @@
 <?php
 require 'db_connect.php';
+require_once __DIR__ . '/src/app_api.php';
 session_start();
 
 // 检查是否登录且是管理员（保留原权限逻辑）
@@ -13,6 +14,29 @@ $success = '';
 $current_admin_id = $_SESSION['user_id'];
 $current_photo = null; // 当前选中待审核的图片
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'pending'; // 活跃标签：pending(待抢单)/my-grabbed(我的抢单)/appeal(申诉)
+
+function app_notify_photo_review(PDO $pdo, int $photoId, string $type, string $body): void
+{
+    $stmt = $pdo->prepare('SELECT id, user_id, title FROM photos WHERE id = :id LIMIT 1');
+    $stmt->bindValue(':id', $photoId, PDO::PARAM_INT);
+    $stmt->execute();
+    $photo = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$photo) {
+        return;
+    }
+
+    app_create_notification(
+        $pdo,
+        (int) $photo['user_id'],
+        $type,
+        '图片审核结果通知',
+        $body,
+        [
+            'photo_id' => (int) $photo['id'],
+            'photo_title' => (string) $photo['title'],
+        ]
+    );
+}
 
 // 处理图片操作（抢图、审核、拒绝、申诉、删除）- 保留原逻辑
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -55,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $score = $_POST['score'] ?? 0;
                 $stmt->bindParam(':score', $score, PDO::PARAM_INT);
                 $stmt->execute();
+                app_notify_photo_review($pdo, $photo_id, 'review_approved', '您的图片已通过审核');
                 $success = '图片已通过审核';
             } catch (PDOException $e) {
                 $error = "审核失败: " . $e->getMessage();
@@ -78,6 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stmt->bindParam(':reviewer_id', $current_admin_id);
                     $stmt->bindParam(':id', $photo_id);
                     $stmt->execute();
+                    $noticeBody = '您的图片未通过审核';
+                    if ($reason !== '') {
+                        $noticeBody .= '，原因：' . $reason;
+                    }
+                    app_notify_photo_review($pdo, $photo_id, 'review_rejected', $noticeBody);
                     $success = '图片已拒绝并记录理由和留言';
                 } catch (PDOException $e) {
                     $error = "拒绝失败: " . $e->getMessage();
@@ -126,6 +156,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $stmt->bindParam(':admin_comment', $admin_comment);
                     }
                     $stmt->execute();
+                    if ($action === 'approve') {
+                        app_notify_photo_review($pdo, $photo_id, 'appeal_approved', '您的申诉已通过，图片已恢复为通过状态');
+                    } else {
+                        $noticeBody = '您的申诉未通过';
+                        if (!empty($appeal_reason)) {
+                            $noticeBody .= '，原因：' . $appeal_reason;
+                        }
+                        app_notify_photo_review($pdo, $photo_id, 'appeal_rejected', $noticeBody);
+                    }
                     $success = '申诉处理已完成';
                 } catch (PDOException $e) {
                     $error = "处理申诉失败: " . $e->getMessage();
